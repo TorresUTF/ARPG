@@ -1,0 +1,883 @@
+<title>Protótipo da Horda</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Cópia do protótipo do kiting, com uma sala de horda: mobs fracos + mini-chefe. Código descartável. */
+:root {
+  --fundo: #11141b;
+  --arena: #171b24;
+  --grade: #222838;
+  --texto: #dfe4ee;
+  --texto-fraco: #8a93a6;
+  --jogador: #4da3ff;
+  --perigo: #ff5a5a;
+  --preparo: #ffd166;
+  --borda: #2c3344;
+  --fonte: "Segoe UI", system-ui, -apple-system, sans-serif;
+  color-scheme: dark;
+}
+html, body { background: var(--fundo); color: var(--texto); font-family: var(--fonte); }
+body { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 16px; }
+main { max-width: 980px; margin: 0 auto; display: grid; gap: 14px; }
+h1 { font-size: 18px; margin: 0; font-weight: 600; letter-spacing: .02em; }
+h2 { font-size: 13px; margin: 6px 0 0; font-weight: 600; color: var(--texto); grid-column: 1 / -1; letter-spacing: .04em; text-transform: uppercase; }
+.ajuda { color: var(--texto-fraco); margin: 0; line-height: 1.5; }
+.ajuda b { color: var(--texto); font-weight: 600; }
+canvas { width: 100%; max-width: 100%; height: auto; display: block; background: var(--arena); border: 1px solid var(--borda); border-radius: 6px; cursor: crosshair; touch-action: none; outline: none; }
+.barra { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; font-variant-numeric: tabular-nums; color: var(--texto-fraco); }
+.barra strong { color: var(--texto); }
+button, select { font: inherit; background: var(--grade); color: var(--texto); border: 1px solid var(--borda); border-radius: 5px; padding: 6px 12px; cursor: pointer; }
+button:hover { border-color: var(--jogador); }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--jogador); outline-offset: 2px; }
+details { border: 1px solid var(--borda); border-radius: 6px; padding: 10px 14px; }
+summary { cursor: pointer; font-weight: 600; }
+.ajustes { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px 24px; margin-top: 12px; }
+.ajuste { display: grid; gap: 2px; min-width: 0; }
+.ajuste label { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--texto-fraco); }
+.ajuste label span:last-child { color: var(--texto); font-variant-numeric: tabular-nums; }
+.ajuste input[type=range] { width: 100%; accent-color: var(--jogador); }
+#palco { display: grid; }
+#palco.cheia, #palco:fullscreen { position: fixed; inset: 0; z-index: 50; background: #000; place-items: center; padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px); }
+#palco.cheia canvas, #palco:fullscreen canvas { width: min(100vw, 150vh); max-width: none; border-radius: 0; border: 0; }
+canvas { image-rendering: pixelated; }
+#sair-cheia { position: absolute; top: calc(12px + env(safe-area-inset-top, 0px)); right: calc(12px + env(safe-area-inset-right, 0px)); }
+.marcar { display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--texto-fraco); }
+</style>
+
+<main>
+  <h1>Protótipo do lutador</h1>
+  <p class="ajuda"><b>Botão direito</b>: mover (pode segurar). <b>Botão esquerdo</b> ou <b>A</b>: ataque básico no inimigo mais perto do mouse (ele fica com um anel claro; se estiver longe, você anda até o alcance). <b>Q</b>: tiro mirado. <b>W</b>: tiro mirado que marca um inimigo; mais 3 ataques básicos nele e a marca explode. <b>E</b>: avanço na direção do mouse. <b>R</b>: aparo; anula um golpe ou disparo que cair dentro da janela curta e atordoa quem atacou. <b>S</b>: parar. <b>Enter</b>: recomeçar. <b>F</b>: tela cheia.</p>
+  <p class="ajuda">Mobs, cada um com um disparo lento: <b style="color:#e08a3c">laranja</b> atira em linha reta, <b style="color:#d46a9f">rosa</b> marca uma área no chão que explode, <b style="color:#3cc4c4">azul-esverdeado</b> atira em leque. O mob fica com um anel amarelo enquanto prepara. O <b>mini-chefe</b> é o boneco do kiting com menos vida. Limpe a sala para vencer.</p>
+  <p class="ajuda"><b>Brasão do lutador</b> (troque no seletor abaixo da arena): mais vida e luta de perto. <b>Ataque básico</b>: golpe corpo a corpo, forte e de alcance curto; erra se o alvo sair de perto durante o preparo. Depois do golpe você já pode andar; só o próximo ataque básico espera um pouco. <b>Q</b>: corte em arco que acerta todos na frente. <b>W</b>: investida na direção do mouse; para no primeiro inimigo, causa dano e marca. <b>E</b> e <b>R</b> são os mesmos.</p>
+  <p class="ajuda" id="aviso-foco"><b>Clique na arena</b> antes de usar o teclado. Se as teclas forem para outro lugar, clique de novo nela.</p>
+  <div id="palco">
+    <canvas id="tela" width="960" height="640" tabindex="0"></canvas>
+    <button id="sair-cheia" type="button" hidden>Sair da tela cheia (F)</button>
+  </div>
+  <div class="barra">
+    <span>Tentativa: <strong id="tentativa">1</strong></span>
+    <span>Tempo: <strong id="tempo">0.0 s</strong></span>
+    <span>Inimigos: <strong id="inimigos">0</strong></span>
+    <span>Golpes levados: <strong id="levados">0</strong></span>
+    <span>Aparos certos: <strong id="aparos">0</strong></span>
+    <span>Usos: <strong id="usos"></strong></span>
+    <label class="marcar" for="brasao">Brasão:
+      <select id="brasao"><option value="lutador">Lutador</option><option value="atirador">Atirador</option></select>
+    </label>
+    <button id="recomecar" type="button">Recomeçar (Enter)</button>
+    <button id="tela-cheia" type="button">Tela cheia (F)</button>
+    <span id="status-arte"></span>
+  </div>
+  <details open>
+    <summary>Painel de ajuste (vale na hora; quantidades e vidas valem ao recomeçar)</summary>
+    <div class="ajustes" id="ajustes"></div>
+    <div class="barra" style="margin-top:12px">
+      <label class="marcar" for="modo">Área do golpe do mini-chefe:
+        <select id="modo">
+          <option value="completa">Completa (desde o início)</option>
+          <option value="parcial">Parcial (aparece no fim do aviso)</option>
+          <option value="escondida">Escondida (só a cor do boneco)</option>
+        </select>
+      </label>
+      <label class="marcar"><input type="checkbox" id="cancelar"> Mover cancela o preparo</label>
+      <button id="padrao" type="button">Voltar aos valores iniciais</button>
+    </div>
+  </details>
+</main>
+
+<!-- Arte opcional, emprestada do protótipo do kiting. Mobs não têm arte: são círculos. -->
+<script src="../kiting/arte/arte.js"></script>
+<script>
+// ===== Números do protótipo (metros e segundos) =====
+const PADRAO = {
+  // Personagem
+  velJogador: 5.5, vidaJogador: 5,
+  // Ataque básico (com alvo, não erra)
+  preparoAtaque: 0.25, recupAtaque: 0.20, alcance: 6, velProjetil: 20, danoAA: 2,
+  // Q: tiro mirado
+  preparoQ: 0.20, recupQ: 0.15, alcanceQ: 9, velQ: 24, larguraQ: 0.5, danoQ: 10, recargaQ: 5,
+  // W: tiro mirado que marca
+  preparoW: 0.25, recupW: 0.15, alcanceW: 8, velW: 18, larguraW: 0.6, danoW: 4, recargaW: 8,
+  duracaoMarca: 5, cargasMarca: 3, danoMarca: 15,
+  // E: avanço
+  distE: 4, velE: 25, recupE: 0.10, recargaE: 6,
+  // R: aparo
+  janelaAparo: 0.25, recupAparo: 0.5, recargaAparo: 12, atordoamento: 1.5,
+  // Brasão do lutador: mais vida, ataque básico de perto, Q em arco, W investida que marca
+  vidaLut: 8, alcanceLut: 0.8, preparoAALut: 0.35, recupAALut: 0.5, danoAALut: 4,
+  preparoQLut: 0.25, recupQLut: 0.30, alcanceQLut: 2.8, arcoQLut: 1.0, danoQLut: 8, recargaQLut: 4,
+  distWLut: 6, velWLut: 22, danoWLut: 4, recupWLut: 0.15, recargaWLut: 7,
+  // Horda
+  temMini: 1, qtdReto: 2, qtdArea: 2, qtdLeque: 1,
+  vidaMob: 4, velMob: 3.0, distMob: 7, preparoMob: 0.6, recupMob: 0.5, recargaMob: 3.0,
+  velBala: 7, alcanceBala: 14, raioBala: 0.25, aberturaLeque: 0.35,
+  raioZona: 1.8, avisoZona: 1.1,
+  // Mini-chefe (o boneco do kiting, com menos vida)
+  velBoneco: 4.0, vidaBoneco: 60, raioGolpe: 2.6, preparoGolpe: 0.70, recupGolpe: 0.90,
+  roscaNucleo: 1.4, roscaInterno: 3.0, roscaExterno: 5.0, preparoRosca: 0.90, velBonecoRosca: 2.0, recargaRosca: 3.0,
+  linhaDistMin: 5.5, linhaComprimento: 14, linhaLargura: 1.4, preparoLinha: 0.80, recargaLinha: 2.5,
+  modoAviso: "parcial", mostrarEm: 0.6,
+};
+const COR_GOLPE = { circulo: "#3d55e8", rosca: "#f0c419", linha: "#2fc46a" };
+const COR_MOB = { reto: "#e08a3c", area: "#d46a9f", leque: "#3cc4c4" };
+const COR_MARCA = "#c77dff";
+const AJUSTES = [
+  ["#", "Brasão do lutador"],
+  ["vidaLut", "Lutador: vida (golpes)", 1, 20, 1],
+  ["alcanceLut", "Lutador: alcance do ataque básico (m)", 0.5, 4, 0.1],
+  ["preparoAALut", "Lutador: ataque básico, preparo (s)", 0, 0.8, 0.01],
+  ["recupAALut", "Lutador: espera até o próximo ataque básico (s, não trava o movimento)", 0, 0.8, 0.01],
+  ["danoAALut", "Lutador: ataque básico, dano", 0, 20, 1],
+  ["preparoQLut", "Lutador Q: preparo (s)", 0, 0.8, 0.01],
+  ["recupQLut", "Lutador Q: recuperação (s)", 0, 0.8, 0.01],
+  ["alcanceQLut", "Lutador Q: alcance do arco (m)", 1, 6, 0.1],
+  ["arcoQLut", "Lutador Q: meia abertura do arco (rad)", 0.3, 3.1, 0.05],
+  ["danoQLut", "Lutador Q: dano", 0, 50, 1],
+  ["recargaQLut", "Lutador Q: recarga (s)", 0, 20, 0.5],
+  ["distWLut", "Lutador W: distância da investida (m)", 1, 12, 0.5],
+  ["velWLut", "Lutador W: velocidade (m/s)", 5, 60, 1],
+  ["danoWLut", "Lutador W: dano", 0, 50, 1],
+  ["recupWLut", "Lutador W: recuperação (s)", 0, 0.8, 0.01],
+  ["recargaWLut", "Lutador W: recarga (s)", 0, 20, 0.5],
+  ["#", "Horda"],
+  ["temMini", "Mini-chefe na sala (0 ou 1)", 0, 1, 1],
+  ["qtdReto", "Mobs de linha reta", 0, 8, 1],
+  ["qtdArea", "Mobs de área no chão", 0, 8, 1],
+  ["qtdLeque", "Mobs de leque", 0, 8, 1],
+  ["vidaMob", "Vida do mob", 1, 40, 1],
+  ["velMob", "Velocidade do mob (m/s)", 0, 8, 0.1],
+  ["distMob", "Distância que o mob mantém (m)", 2, 14, 0.5],
+  ["preparoMob", "Mob: aviso antes do disparo (s)", 0.1, 2, 0.05],
+  ["recupMob", "Mob: recuperação (s)", 0, 2, 0.05],
+  ["recargaMob", "Mob: recarga do disparo (s)", 0.5, 10, 0.1],
+  ["velBala", "Disparo: velocidade (m/s)", 2, 20, 0.5],
+  ["alcanceBala", "Disparo: alcance (m)", 4, 30, 0.5],
+  ["raioBala", "Disparo: raio (m)", 0.1, 1, 0.05],
+  ["aberturaLeque", "Leque: abertura entre disparos (rad)", 0.1, 1, 0.05],
+  ["raioZona", "Área no chão: raio (m)", 0.5, 5, 0.1],
+  ["avisoZona", "Área no chão: aviso (s)", 0.3, 3, 0.05],
+  ["#", "Personagem e ataque básico"],
+  ["velJogador", "Velocidade do jogador (m/s)", 2, 10, 0.1],
+  ["vidaJogador", "Vida do jogador (golpes)", 1, 10, 1],
+  ["preparoAtaque", "Ataque básico: preparo (s)", 0, 0.8, 0.01],
+  ["recupAtaque", "Ataque básico: recuperação (s)", 0, 0.8, 0.01],
+  ["alcance", "Ataque básico: alcance (m)", 2, 14, 0.5],
+  ["velProjetil", "Ataque básico: velocidade do tiro (m/s)", 5, 40, 1],
+  ["danoAA", "Ataque básico: dano", 0, 20, 1],
+  ["#", "Q: tiro mirado"],
+  ["preparoQ", "Q: preparo (s)", 0, 0.8, 0.01],
+  ["recupQ", "Q: recuperação (s)", 0, 0.8, 0.01],
+  ["alcanceQ", "Q: alcance (m)", 2, 16, 0.5],
+  ["velQ", "Q: velocidade (m/s)", 5, 50, 1],
+  ["larguraQ", "Q: largura (m)", 0.1, 2, 0.05],
+  ["danoQ", "Q: dano", 0, 50, 1],
+  ["recargaQ", "Q: recarga (s)", 0, 20, 0.5],
+  ["#", "W: tiro que marca"],
+  ["preparoW", "W: preparo (s)", 0, 0.8, 0.01],
+  ["recupW", "W: recuperação (s)", 0, 0.8, 0.01],
+  ["alcanceW", "W: alcance (m)", 2, 16, 0.5],
+  ["velW", "W: velocidade (m/s)", 5, 50, 1],
+  ["larguraW", "W: largura (m)", 0.1, 2, 0.05],
+  ["danoW", "W: dano do tiro", 0, 50, 1],
+  ["recargaW", "W: recarga (s)", 0, 20, 0.5],
+  ["duracaoMarca", "Marca: duração (s)", 1, 15, 0.5],
+  ["cargasMarca", "Marca: ataques básicos para explodir", 1, 6, 1],
+  ["danoMarca", "Marca: dano da explosão", 0, 80, 1],
+  ["#", "E: avanço"],
+  ["distE", "E: distância (m)", 1, 10, 0.5],
+  ["velE", "E: velocidade (m/s)", 5, 60, 1],
+  ["recupE", "E: recuperação (s)", 0, 0.8, 0.01],
+  ["recargaE", "E: recarga (s)", 0, 20, 0.5],
+  ["#", "R: aparo"],
+  ["janelaAparo", "R: janela do aparo (s)", 0.05, 1, 0.01],
+  ["recupAparo", "R: recuperação se errar (s)", 0, 1.5, 0.05],
+  ["recargaAparo", "R: recarga (s)", 0, 30, 0.5],
+  ["atordoamento", "R: atordoamento de quem foi aparado (s)", 0, 4, 0.1],
+  ["#", "Mini-chefe"],
+  ["vidaBoneco", "Vida do mini-chefe", 20, 400, 5],
+  ["velBoneco", "Velocidade do mini-chefe (m/s)", 1, 9, 0.1],
+  ["raioGolpe", "Círculo: tamanho (m)", 1, 5, 0.1],
+  ["preparoGolpe", "Círculo: aviso (s)", 0.2, 1.5, 0.05],
+  ["recupGolpe", "Recuperação do mini-chefe (s)", 0, 2, 0.05],
+  ["roscaNucleo", "Saturno: raio do círculo central (m)", 0, 4, 0.1],
+  ["roscaInterno", "Saturno: início do anel (m)", 0.5, 6, 0.1],
+  ["roscaExterno", "Saturno: fim do anel (m)", 2, 9, 0.1],
+  ["preparoRosca", "Saturno: aviso (s)", 0.2, 2, 0.05],
+  ["velBonecoRosca", "Saturno: velocidade andando (m/s)", 0, 6, 0.1],
+  ["recargaRosca", "Saturno: recarga (s)", 0, 10, 0.5],
+  ["linhaDistMin", "Linha: usa a partir de (m)", 2, 14, 0.5],
+  ["linhaComprimento", "Linha: comprimento (m)", 4, 24, 0.5],
+  ["linhaLargura", "Linha: largura (m)", 0.4, 4, 0.1],
+  ["preparoLinha", "Linha: aviso (s)", 0.2, 2, 0.05],
+  ["recargaLinha", "Linha: recarga (s)", 0, 10, 0.5],
+  ["mostrarEm", "Modo parcial: área aparece em (fração do aviso)", 0, 1, 0.05],
+];
+const C = { ...PADRAO };
+const LARG = 24, ALT = 16;                          // arena em metros
+const RAIO_J = 0.45, RAIO_B = 0.9, RAIO_M = 0.45;   // tamanhos
+const DT = 1 / 60;                                  // passo fixo da simulação
+const BUFFER = 0.2;                                 // comando guardado enquanto ocupado (s)
+
+// ===== Estado =====
+let s, tentativas = 0;
+let brasao = "lutador";
+const lut = () => brasao === "lutador";
+const alcanceAA = () => lut() ? C.alcanceLut : C.alcance;
+const vidaMaxJ = () => lut() ? C.vidaLut : C.vidaJogador;
+let mouse = { x: 0, y: 0 };
+function novoInimigo(tipo, x, y) {
+  const chefe = tipo === "chefe", vida = chefe ? C.vidaBoneco : C.vidaMob;
+  return { tipo, x, y, raio: chefe ? RAIO_B : RAIO_M, vida, vidaMax: vida,
+    estado: chefe ? "perseguir" : "andar", golpe: null, t: 0, flash: 0, golpeFlash: 0,
+    recRosca: 1.5, recLinha: 1.5, rec: 1 + Math.random() * C.recargaMob,
+    dx: 1, dy: 0, marca: 0, cargas: 0, explosao: 0 };
+}
+function novoJogo() {
+  tentativas += 1;
+  const inimigos = [];
+  if (C.temMini >= 1) inimigos.push(novoInimigo("chefe", 19, ALT / 2));
+  const tipos = [...Array(C.qtdReto).fill("reto"), ...Array(C.qtdArea).fill("area"), ...Array(C.qtdLeque).fill("leque")];
+  tipos.sort(() => Math.random() - 0.5);
+  tipos.forEach((tipo, i) => inimigos.push(novoInimigo(tipo, 13 + Math.random() * 9, 1.5 + (i + 0.5) / tipos.length * (ALT - 3))));
+  s = {
+    tempo: 0, fim: null,
+    j: { x: 4, y: ALT / 2, vida: vidaMaxJ(), alvo: null, alvoAA: null, acao: null, flash: 0, perseguindo: false, recAA: 0, rec: { q: 0, w: 0, e: 0, r: 0 }, olhar: 1, aparoFlash: 0 },
+    inimigos, tiros: [], cortes: [], balas: [], zonas: [], aaGuardado: 0, habGuardada: null, alvoGuardado: null,
+    acertos: 0, levados: 0, aparos: 0, usos: { aa: 0, q: 0, w: 0, e: 0, r: 0 },
+  };
+}
+novoJogo();
+
+const dist = (ax, ay, bx, by) => Math.hypot(ax - bx, ay - by);
+const limitar = (v, a, b) => Math.max(a, Math.min(b, v));
+const tempos = (tipo) => ({
+  aa: lut() ? [C.preparoAALut, C.recupAALut] : [C.preparoAtaque, C.recupAtaque],
+  q: lut() ? [C.preparoQLut, C.recupQLut] : [C.preparoQ, C.recupQ], w: lut() ? [0, C.recupWLut] : [C.preparoW, C.recupW], e: [0, C.recupE], r: [0, C.recupAparo],
+}[tipo]);
+const RECARGA = { q: () => lut() ? C.recargaQLut : C.recargaQ, w: () => lut() ? C.recargaWLut : C.recargaW, e: () => C.recargaE, r: () => C.recargaAparo };
+const HABS = ["q", "w", "e", "r"];
+const textoUsos = () => `AA ${s.usos.aa} · Q ${s.usos.q} · W ${s.usos.w} · E ${s.usos.e} · R ${s.usos.r}`;
+
+// Inimigo vivo mais perto do mouse: é o alvo do ataque básico
+function alvoDoMouse() {
+  let melhor = null, md = Infinity;
+  for (const i of s.inimigos) { const d = dist(mouse.x, mouse.y, i.x, i.y) - i.raio; if (d < md) { md = d; melhor = i; } }
+  return melhor;
+}
+
+// ===== Comandos vindos do mouse e do teclado =====
+function comandoMover(x, y) {
+  const j = s.j;
+  j.perseguindo = false;
+  if (j.acao) {
+    if (j.acao.fase === "preparo" && document.getElementById("cancelar").checked) { j.acao = null; j.alvo = { x, y }; }
+    else s.alvoGuardado = { x, y };
+    return;
+  }
+  j.alvo = { x, y };
+}
+function comandoParar() {
+  const j = s.j;
+  j.alvo = null; j.perseguindo = false; s.alvoGuardado = null; s.aaGuardado = 0; s.habGuardada = null; direitoSegurado = false;
+}
+function comandoAtacar() {
+  const j = s.j;
+  if (j.acao) { s.aaGuardado = BUFFER; return; }
+  const a = alvoDoMouse(); if (!a) return;
+  j.alvoAA = a;
+  if (dist(j.x, j.y, a.x, a.y) - a.raio <= alcanceAA() && j.recAA <= 0) iniciarAA();
+  else { j.perseguindo = true; j.alvo = null; } // anda até ficar no alcance
+}
+function iniciarAA() {
+  const j = s.j, b = j.alvoAA;
+  const d = dist(j.x, j.y, b.x, b.y) || 1;
+  j.acao = { tipo: "aa", fase: "preparo", t: 0, dx: (b.x - j.x) / d, dy: (b.y - j.y) / d, alvo: b };
+  j.alvo = null; j.perseguindo = false; s.alvoGuardado = null;
+}
+function comandoHabilidade(tipo, x, y) {
+  const j = s.j;
+  if (j.rec[tipo] > 0) return;
+  if (j.acao) {
+    const podeCortar = j.acao.tipo === "aa" && j.acao.fase === "recuperacao";
+    if (!podeCortar) { s.habGuardada = { tipo, x, y, t: 0.4 }; return; }
+  }
+  const dx = x - j.x, dy = y - j.y, d = Math.hypot(dx, dy) || 1;
+  j.acao = { tipo, fase: tipo === "e" || tipo === "r" || (tipo === "w" && lut()) ? "ativo" : "preparo", t: 0, dx: dx / d, dy: dy / d };
+  j.rec[tipo] = RECARGA[tipo]();
+  s.usos[tipo] += 1;
+  j.alvo = null; j.perseguindo = false; s.alvoGuardado = null; s.habGuardada = null;
+}
+function disparar(a) {
+  const j = s.j, ox = j.x + a.dx * RAIO_J, oy = j.y + a.dy * RAIO_J;
+  if (lut()) {
+    const ang = Math.atan2(a.dy, a.dx);
+    if (a.tipo === "aa") {
+      // golpe de perto: erra se o alvo saiu do alcance durante o preparo
+      s.usos.aa += 1; s.cortes.push({ x: j.x, y: j.y, ang, meia: 0.5, r: C.alcanceLut + 0.9, t: 0.12, cor: "255,209,102" });
+      if (a.alvo.vida > 0 && dist(j.x, j.y, a.alvo.x, a.alvo.y) - a.alvo.raio <= C.alcanceLut + 0.6) golpeBasico(a.alvo, C.danoAALut);
+    } else if (a.tipo === "q") {
+      s.cortes.push({ x: j.x, y: j.y, ang, meia: C.arcoQLut, r: C.alcanceQLut, t: 0.18, cor: "255,255,255" });
+      for (const i of s.inimigos) {
+        const d = dist(j.x, j.y, i.x, i.y); if (i.vida <= 0 || d - i.raio > C.alcanceQLut) continue;
+        let dif = Math.abs(Math.atan2(i.y - j.y, i.x - j.x) - ang); if (dif > Math.PI) dif = 2 * Math.PI - dif;
+        if (dif <= C.arcoQLut || d < i.raio + RAIO_J + 0.2) causarDano(i, C.danoQLut);
+      }
+    }
+    return;
+  }
+  if (a.tipo === "aa") { s.tiros.push({ tipo: "aa", x: ox, y: oy, alvo: a.alvo }); s.usos.aa += 1; }
+  else if (a.tipo === "q") s.tiros.push({ tipo: "q", x: ox, y: oy, dx: a.dx, dy: a.dy, percorrido: 0, alcance: C.alcanceQ, vel: C.velQ, raio: C.larguraQ / 2 });
+  else if (a.tipo === "w") s.tiros.push({ tipo: "w", x: ox, y: oy, dx: a.dx, dy: a.dy, percorrido: 0, alcance: C.alcanceW, vel: C.velW, raio: C.larguraW / 2 });
+}
+function processarFila() {
+  const j = s.j;
+  if (s.habGuardada) { const h = s.habGuardada; s.habGuardada = null; comandoHabilidade(h.tipo, h.x, h.y); }
+  else if (s.aaGuardado > 0) { s.aaGuardado = 0; comandoAtacar(); }
+  else if (s.alvoGuardado) { j.alvo = s.alvoGuardado; s.alvoGuardado = null; }
+}
+
+// ===== Simulação (60 passos por segundo) =====
+function causarDano(i, n) { i.vida -= n; i.flash = 0.12; s.acertos += 1; }
+// Ataque básico que acertou: dano e uma carga na marca, se houver
+function golpeBasico(b, dano) {
+  causarDano(b, dano);
+  if (b.marca > 0) {
+    b.cargas += 1;
+    if (b.cargas >= C.cargasMarca) { causarDano(b, C.danoMarca); b.marca = 0; b.cargas = 0; b.explosao = 0.35; }
+  }
+}
+
+// Um golpe ou disparo chegou no jogador. Devolve true se foi aparado.
+function atingirJogador(dono) {
+  const j = s.j;
+  if (j.acao && j.acao.tipo === "r" && j.acao.fase === "ativo") {
+    // aparo certo: anulado, jogador livre na hora, quem atacou fica atordoado
+    j.acao = null; j.aparoFlash = 0.4; s.aparos += 1;
+    if (dono && dono.vida > 0) { dono.estado = "atordoado"; dono.t = 0; dono.golpe = null; }
+    return true;
+  }
+  j.vida -= 1; s.levados += 1; j.flash = 0.3;
+  return false;
+}
+
+function passoChefe(b) {
+  const j = s.j;
+  const dJB = dist(j.x, j.y, b.x, b.y) || 0.001;
+  b.recRosca = Math.max(0, b.recRosca - DT); b.recLinha = Math.max(0, b.recLinha - DT);
+  const andarAte = (vel) => { const p = vel * DT; b.x += (j.x - b.x) / dJB * p; b.y += (j.y - b.y) / dJB * p; };
+  if (b.estado === "perseguir") {
+    const comecar = (golpe) => { b.estado = "preparo"; b.golpe = golpe; b.t = 0; };
+    if (dJB <= C.raioGolpe * 0.75) comecar("circulo");
+    else if (b.recRosca <= 0 && dJB < C.roscaExterno * 0.9) { comecar("rosca"); b.recRosca = C.recargaRosca; }
+    else if (b.recLinha <= 0 && dJB >= C.linhaDistMin) {
+      comecar("linha"); b.recLinha = C.recargaLinha;
+      b.dx = (j.x - b.x) / dJB; b.dy = (j.y - b.y) / dJB;
+    }
+    else andarAte(C.velBoneco);
+    return;
+  }
+  b.t += DT;
+  if (b.estado === "preparo") {
+    const aviso = { circulo: C.preparoGolpe, rosca: C.preparoRosca, linha: C.preparoLinha }[b.golpe];
+    if (b.golpe === "rosca") andarAte(C.velBonecoRosca);
+    if (b.t >= aviso) {
+      b.golpeFlash = 0.3; b.golpeVisto = b.golpe;
+      const d = dist(j.x, j.y, b.x, b.y);
+      let acertou = false;
+      if (b.golpe === "circulo") acertou = d < C.raioGolpe + RAIO_J;
+      else if (b.golpe === "rosca") acertou = d - RAIO_J < C.roscaNucleo || (d + RAIO_J > C.roscaInterno && d - RAIO_J < C.roscaExterno);
+      else {
+        const px = j.x - b.x, py = j.y - b.y;
+        const ao_longo = limitar(px * b.dx + py * b.dy, 0, C.linhaComprimento);
+        acertou = dist(j.x, j.y, b.x + b.dx * ao_longo, b.y + b.dy * ao_longo) < C.linhaLargura / 2 + RAIO_J;
+      }
+      if (!(acertou && atingirJogador(b))) { b.estado = "recuperacao"; b.t = 0; }
+    }
+  } else if (b.estado === "recuperacao" && b.t >= C.recupGolpe) { b.estado = "perseguir"; b.golpe = null; b.t = 0; }
+  else if (b.estado === "atordoado" && b.t >= C.atordoamento) { b.estado = "perseguir"; b.golpe = null; b.t = 0; }
+}
+
+function passoMob(m) {
+  const j = s.j;
+  const d = dist(j.x, j.y, m.x, m.y) || 0.001;
+  m.rec = Math.max(0, m.rec - DT);
+  if (m.estado === "andar") {
+    if (d > C.distMob) { const p = C.velMob * DT; m.x += (j.x - m.x) / d * p; m.y += (j.y - m.y) / d * p; }
+    if (m.rec <= 0 && d <= C.distMob + 2) {
+      // mira travada onde o jogador está quando o aviso começa
+      m.estado = "preparo"; m.t = 0; m.dx = (j.x - m.x) / d; m.dy = (j.y - m.y) / d;
+    }
+    return;
+  }
+  m.t += DT;
+  if (m.estado === "preparo" && m.t >= C.preparoMob) {
+    const bala = (ang) => {
+      const c = Math.cos(ang), sn = Math.sin(ang), dx = m.dx * c - m.dy * sn, dy = m.dx * sn + m.dy * c;
+      s.balas.push({ x: m.x + dx * m.raio, y: m.y + dy * m.raio, dx, dy, percorrido: 0, dono: m });
+    };
+    if (m.tipo === "reto") bala(0);
+    else if (m.tipo === "leque") { bala(-C.aberturaLeque); bala(0); bala(C.aberturaLeque); }
+    else s.zonas.push({ x: j.x, y: j.y, t: 0, flash: 0, estourou: false, dono: m }); // área onde o jogador está agora
+    m.estado = "recuperacao"; m.t = 0;
+  }
+  else if (m.estado === "recuperacao" && m.t >= C.recupMob) { m.estado = "andar"; m.rec = C.recargaMob * (0.8 + Math.random() * 0.4); }
+  else if (m.estado === "atordoado" && m.t >= C.atordoamento) { m.estado = "andar"; m.rec = C.recargaMob * 0.5; }
+}
+
+function passo() {
+  if (s.fim) return;
+  s.tempo += DT;
+  const j = s.j;
+
+  // Recargas e comandos guardados
+  for (const k of HABS) j.rec[k] = Math.max(0, j.rec[k] - DT);
+  j.recAA = Math.max(0, j.recAA - DT);
+  s.aaGuardado = Math.max(0, s.aaGuardado - DT);
+  if (s.habGuardada) { s.habGuardada.t -= DT; if (s.habGuardada.t <= 0) s.habGuardada = null; }
+  if (s.habGuardada && j.acao && j.acao.tipo === "aa" && j.acao.fase === "recuperacao") {
+    const h = s.habGuardada; s.habGuardada = null; comandoHabilidade(h.tipo, h.x, h.y);
+  }
+  // O alvo do ataque básico morreu: desiste do preparo ou da perseguição
+  if (j.acao && j.acao.tipo === "aa" && j.acao.fase === "preparo" && j.acao.alvo.vida <= 0) { j.acao = null; processarFila(); }
+  if (j.perseguindo && (!j.alvoAA || j.alvoAA.vida <= 0)) j.perseguindo = false;
+
+  // Jogador
+  if (j.acao) {
+    const a = j.acao, [prep, recup] = tempos(a.tipo);
+    a.t += DT;
+    if (a.fase === "preparo" && a.t >= prep) {
+      disparar(a);
+      // lutador: o golpe não prende no lugar; só há uma espera até o próximo ataque básico
+      if (lut() && a.tipo === "aa") { j.acao = null; j.recAA = C.recupAALut; processarFila(); }
+      else { a.fase = "recuperacao"; a.t = 0; }
+    }
+    else if (a.fase === "ativo" && a.tipo === "e") {
+      const p = C.velE * DT; j.x += a.dx * p; j.y += a.dy * p;
+      if (a.t >= C.distE / C.velE) { a.fase = "recuperacao"; a.t = 0; }
+    }
+    else if (a.fase === "ativo" && a.tipo === "w") {
+      // investida do lutador: para no primeiro inimigo, causa dano e marca
+      const p = C.velWLut * DT; j.x += a.dx * p; j.y += a.dy * p;
+      const b = s.inimigos.find(i => i.vida > 0 && dist(j.x, j.y, i.x, i.y) < RAIO_J + i.raio + 0.15);
+      if (b) { causarDano(b, C.danoWLut); b.marca = C.duracaoMarca; b.cargas = 0; a.fase = "recuperacao"; a.t = 0; }
+      else if (a.t >= C.distWLut / C.velWLut) { a.fase = "recuperacao"; a.t = 0; }
+    }
+    else if (a.fase === "ativo" && a.tipo === "r" && a.t >= C.janelaAparo) { a.fase = "recuperacao"; a.t = 0; }
+    else if (a.fase === "recuperacao" && a.t >= recup) { j.acao = null; processarFila(); }
+    if (j.acao && j.acao.tipo !== "r") j.olhar = j.acao.dx >= 0 ? 1 : -1;
+    j.andando = false;
+  } else if (j.perseguindo) {
+    const b = j.alvoAA, d = dist(j.x, j.y, b.x, b.y) || 0.001;
+    if (d - b.raio <= alcanceAA()) { if (j.recAA <= 0) iniciarAA(); else j.andando = false; }
+    else { const p = C.velJogador * DT; j.x += (b.x - j.x) / d * p; j.y += (b.y - j.y) / d * p; j.olhar = b.x >= j.x ? 1 : -1; j.andando = true; }
+  } else if (j.alvo) {
+    const dx = j.alvo.x - j.x, dy = j.alvo.y - j.y, d = Math.hypot(dx, dy), p = C.velJogador * DT;
+    if (d <= p) { j.x = j.alvo.x; j.y = j.alvo.y; j.alvo = null; }
+    else { j.x += dx / d * p; j.y += dy / d * p; }
+    if (Math.abs(dx) > 0.01) j.olhar = dx >= 0 ? 1 : -1;
+    j.andando = true;
+  } else j.andando = false;
+
+  // Inimigos
+  for (const i of s.inimigos) {
+    if (i.marca > 0) { i.marca = Math.max(0, i.marca - DT); if (i.marca === 0) i.cargas = 0; }
+    i.flash = Math.max(0, i.flash - DT); i.golpeFlash = Math.max(0, i.golpeFlash - DT); i.explosao = Math.max(0, i.explosao - DT);
+    if (i.tipo === "chefe") passoChefe(i); else passoMob(i);
+  }
+
+  // Disparos dos mobs
+  for (const t of s.balas) {
+    const p = C.velBala * DT;
+    t.x += t.dx * p; t.y += t.dy * p; t.percorrido += p;
+    if (dist(t.x, t.y, j.x, j.y) < C.raioBala + RAIO_J) { t.morto = true; atingirJogador(t.dono); }
+    else if (t.percorrido >= C.alcanceBala || t.x < -1 || t.y < -1 || t.x > LARG + 1 || t.y > ALT + 1) t.morto = true;
+  }
+  s.balas = s.balas.filter(t => !t.morto);
+
+  // Áreas no chão
+  for (const z of s.zonas) {
+    z.t += DT;
+    if (!z.estourou && z.t >= C.avisoZona) {
+      z.estourou = true; z.flash = 0.3;
+      if (dist(z.x, z.y, j.x, j.y) < C.raioZona + RAIO_J) atingirJogador(z.dono);
+    } else if (z.estourou) z.flash -= DT;
+  }
+  s.zonas = s.zonas.filter(z => !z.estourou || z.flash > 0);
+
+  // Corpos não se atravessam
+  for (const i of s.inimigos) {
+    const d = dist(j.x, j.y, i.x, i.y), min = RAIO_J + i.raio;
+    if (d < min && d > 0) { const e = min - d; j.x += (j.x - i.x) / d * e; j.y += (j.y - i.y) / d * e; }
+  }
+  for (let a = 0; a < s.inimigos.length; a++) for (let b = a + 1; b < s.inimigos.length; b++) {
+    const p = s.inimigos[a], q = s.inimigos[b], d = dist(p.x, p.y, q.x, q.y), min = p.raio + q.raio;
+    if (d < min && d > 0) { const e = (min - d) / 2, ux = (p.x - q.x) / d, uy = (p.y - q.y) / d; p.x += ux * e; p.y += uy * e; q.x -= ux * e; q.y -= uy * e; }
+  }
+  j.x = limitar(j.x, RAIO_J, LARG - RAIO_J); j.y = limitar(j.y, RAIO_J, ALT - RAIO_J);
+  for (const i of s.inimigos) { i.x = limitar(i.x, i.raio, LARG - i.raio); i.y = limitar(i.y, i.raio, ALT - i.raio); }
+
+  // Tiros do jogador
+  for (const t of s.tiros) {
+    if (t.tipo === "aa") {
+      // segue o alvo: o ataque básico não erra
+      const b = t.alvo;
+      if (b.vida <= 0) { t.morto = true; continue; }
+      const d = dist(t.x, t.y, b.x, b.y) || 0.001, p = C.velProjetil * DT;
+      t.x += (b.x - t.x) / d * p; t.y += (b.y - t.y) / d * p;
+      if (d < b.raio + 0.15 + p) {
+        t.morto = true; golpeBasico(b, C.danoAA);
+      }
+    } else {
+      const p = t.vel * DT;
+      t.x += t.dx * p; t.y += t.dy * p; t.percorrido += p;
+      const b = s.inimigos.find(i => i.vida > 0 && dist(t.x, t.y, i.x, i.y) < i.raio + t.raio);
+      if (b) {
+        t.morto = true;
+        if (t.tipo === "q") causarDano(b, C.danoQ);
+        else { causarDano(b, C.danoW); b.marca = C.duracaoMarca; b.cargas = 0; }
+      }
+      else if (t.percorrido >= t.alcance) t.morto = true;
+    }
+  }
+  s.tiros = s.tiros.filter(t => !t.morto);
+
+  for (const c of s.cortes) c.t -= DT;
+  s.cortes = s.cortes.filter(c => c.t > 0);
+  j.flash = Math.max(0, j.flash - DT); j.aparoFlash = Math.max(0, j.aparoFlash - DT);
+  s.inimigos = s.inimigos.filter(i => i.vida > 0);
+  if (j.vida <= 0) s.fim = "perdeu";
+  else if (!s.inimigos.length) s.fim = "venceu";
+}
+
+// ===== Desenho =====
+const tela = document.getElementById("tela"), ctx = tela.getContext("2d");
+const ESC = tela.width / LARG; // pixels por metro
+const cor = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const CORES = { arena: cor("--arena"), grade: cor("--grade"), texto: cor("--texto"), fraco: cor("--texto-fraco"), jog: cor("--jogador"), perigo: cor("--perigo"), prep: cor("--preparo") };
+const FONTE = cor("--fonte");
+
+function circulo(x, y, r, preencher, tracar, larg = 2) {
+  ctx.beginPath(); ctx.arc(x * ESC, y * ESC, r * ESC, 0, Math.PI * 2);
+  if (preencher) { ctx.fillStyle = preencher; ctx.fill(); }
+  if (tracar) { ctx.strokeStyle = tracar; ctx.lineWidth = larg; ctx.stroke(); }
+}
+function arco(x, y, r, frac, c) {
+  ctx.beginPath(); ctx.arc(x * ESC, y * ESC, r * ESC, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * frac);
+  ctx.strokeStyle = c; ctx.lineWidth = 4; ctx.stroke();
+}
+function barraVida(x, y, frac, c, larg = 1.6) {
+  const w = larg * ESC, h = 5, px = x * ESC - w / 2, py = y * ESC;
+  ctx.fillStyle = CORES.grade; ctx.fillRect(px, py, w, h);
+  ctx.fillStyle = c; ctx.fillRect(px, py, w * Math.max(0, frac), h);
+}
+function linhaMira(x, y, dx, dy, L, c, larg = 2) {
+  ctx.strokeStyle = c; ctx.lineWidth = larg; ctx.beginPath();
+  ctx.moveTo(x * ESC, y * ESC); ctx.lineTo((x + dx * L) * ESC, (y + dy * L) * ESC); ctx.stroke();
+}
+
+// ===== Arte (pixel art), emprestada de ../kiting/arte =====
+const PECAS = ["chao", "jogador", "boneco_normal", "boneco_circulo", "boneco_saturno", "boneco_linha", "boneco_recuperacao",
+  "boneco_atordoado", "boneco_atingido", "tiro_aa", "tiro_q", "tiro_w", "marca", "carga", "explosao", "aparo", "destino", "icones"];
+const PX_ARTE = ESC / 20;
+const ARTE_IMG = {};
+function atualizarStatusArte() {
+  const n = Object.keys(ARTE_IMG).length;
+  document.getElementById("status-arte").textContent = n ? `Arte: ${n} de ${PECAS.length} peças` : "Arte: formas geométricas";
+}
+function carregarArte() {
+  const fonte = window.ARTE || {};
+  for (const nome of PECAS) {
+    const img = new Image();
+    img.onload = () => { ARTE_IMG[nome] = img; atualizarStatusArte(); };
+    img.onerror = () => {};
+    img.src = fonte[nome] || `../kiting/arte/${nome}.png`;
+  }
+  atualizarStatusArte();
+}
+function peca(nome, i, x, y, espelhar = false, ang = 0) {
+  const img = ARTE_IMG[nome]; if (!img) return false;
+  const fw = img.height, n = Math.max(1, Math.floor(img.width / fw)), w = fw * PX_ARTE;
+  ctx.save(); ctx.imageSmoothingEnabled = false;
+  ctx.translate(Math.round(x * ESC), Math.round(y * ESC)); if (ang) ctx.rotate(ang); if (espelhar) ctx.scale(-1, 1);
+  ctx.drawImage(img, (Math.floor(i) % n) * fw, 0, fw, fw, -w / 2, -w / 2, w, w);
+  ctx.restore(); return true;
+}
+const animar = (fps, n, t = s.tempo) => Math.floor(t * fps) % n;
+carregarArte();
+
+// Marca do W, explosão e barra de vida: iguais para mini-chefe e mob
+function desenharMarcaEVida(i) {
+  if (i.marca > 0) {
+    if (i.tipo !== "chefe" || !peca("marca", 0, i.x, i.y)) circulo(i.x, i.y, i.raio + 0.25, null, COR_MARCA, 3);
+    for (let k = 0; k < C.cargasMarca; k++) {
+      const ang = -Math.PI / 2 + (k - (C.cargasMarca - 1) / 2) * 0.5;
+      const cx = i.x + Math.cos(ang) * (i.raio + 0.6), cy = i.y + Math.sin(ang) * (i.raio + 0.6);
+      if (!peca("carga", k < i.cargas ? 1 : 0, cx, cy)) circulo(cx, cy, 0.13, k < i.cargas ? COR_MARCA : null, COR_MARCA, 1.5);
+    }
+  }
+  if (i.explosao > 0) circulo(i.x, i.y, i.raio + 0.3 + (0.35 - i.explosao) * 6, null, COR_MARCA, 4);
+  if (i.tipo === "chefe") barraVida(i.x, i.y - i.raio - 0.95, i.vida / i.vidaMax, CORES.perigo);
+  else barraVida(i.x, i.y - i.raio - 0.4, i.vida / i.vidaMax, CORES.perigo, 0.9);
+}
+
+function desenharAreaChefe(b) {
+  const golpe = b.golpe || b.golpeVisto; if (!golpe) return;
+  const forma = (frac, preencher, tracar) => {
+    ctx.beginPath();
+    if (golpe === "circulo") ctx.arc(b.x * ESC, b.y * ESC, C.raioGolpe * frac * ESC, 0, Math.PI * 2);
+    else if (golpe === "rosca") {
+      const ext = C.roscaInterno + (C.roscaExterno - C.roscaInterno) * frac;
+      ctx.arc(b.x * ESC, b.y * ESC, ext * ESC, 0, Math.PI * 2);
+      ctx.moveTo((b.x + C.roscaInterno) * ESC, b.y * ESC);
+      ctx.arc(b.x * ESC, b.y * ESC, C.roscaInterno * ESC, 0, Math.PI * 2, true);
+      if (C.roscaNucleo > 0) {
+        ctx.moveTo((b.x + C.roscaNucleo * frac) * ESC, b.y * ESC);
+        ctx.arc(b.x * ESC, b.y * ESC, C.roscaNucleo * frac * ESC, 0, Math.PI * 2);
+      }
+    } else {
+      const nx = -b.dy, ny = b.dx, w = C.linhaLargura / 2, L = C.linhaComprimento * frac;
+      ctx.moveTo((b.x + nx * w) * ESC, (b.y + ny * w) * ESC);
+      ctx.lineTo((b.x + nx * w + b.dx * L) * ESC, (b.y + ny * w + b.dy * L) * ESC);
+      ctx.lineTo((b.x - nx * w + b.dx * L) * ESC, (b.y - ny * w + b.dy * L) * ESC);
+      ctx.lineTo((b.x - nx * w) * ESC, (b.y - ny * w) * ESC);
+      ctx.closePath();
+    }
+    if (preencher) { ctx.fillStyle = preencher; ctx.fill("evenodd"); }
+    if (tracar) { ctx.strokeStyle = tracar; ctx.lineWidth = 2; ctx.stroke(); }
+  };
+  if (b.estado === "preparo") {
+    const aviso = { circulo: C.preparoGolpe, rosca: C.preparoRosca, linha: C.preparoLinha }[b.golpe];
+    const frac = Math.min(1, b.t / aviso);
+    const mostrar = C.modoAviso === "completa" || (C.modoAviso === "parcial" && frac >= C.mostrarEm);
+    if (mostrar) { forma(1, "rgba(255,90,90,0.10)", CORES.perigo); forma(frac, "rgba(255,90,90,0.28)"); }
+  }
+  if (b.golpeFlash > 0) forma(1, `rgba(255,90,90,${0.6 * b.golpeFlash / 0.3})`);
+}
+
+function desenharChefe(b) {
+  const j = s.j;
+  const corB = b.flash > 0 ? "#ffffff" : b.estado === "preparo" ? COR_GOLPE[b.golpe] : b.estado === "recuperacao" ? "#7a3b3b" : b.estado === "atordoado" ? "#8f7fb0" : "#c94a4a";
+  const pecaB = b.flash > 0 ? "boneco_atingido" : b.estado === "preparo" ? { circulo: "boneco_circulo", rosca: "boneco_saturno", linha: "boneco_linha" }[b.golpe]
+    : b.estado === "recuperacao" ? "boneco_recuperacao" : b.estado === "atordoado" ? "boneco_atordoado" : "boneco_normal";
+  const olharB = j.x < b.x;
+  if (!peca(pecaB, animar(4, 2), b.x, b.y, olharB)) {
+    if (peca("boneco_normal", animar(4, 2), b.x, b.y, olharB)) {
+      if (corB !== "#c94a4a") circulo(b.x, b.y, RAIO_B + 0.1, null, corB, 5);
+    } else circulo(b.x, b.y, RAIO_B, corB);
+  }
+  desenharMarcaEVida(b);
+}
+
+function desenharMob(m) {
+  // aviso do disparo: linhas de mira (reto e leque) e anel amarelo que se fecha
+  if (m.estado === "preparo") {
+    const frac = Math.min(1, m.t / C.preparoMob), c = "rgba(255,90,90,0.45)";
+    const mira = (ang) => { const co = Math.cos(ang), sn = Math.sin(ang); linhaMira(m.x, m.y, m.dx * co - m.dy * sn, m.dx * sn + m.dy * co, C.alcanceBala, c, C.raioBala * 2 * ESC * 0.5); };
+    if (m.tipo === "reto") mira(0);
+    else if (m.tipo === "leque") { mira(-C.aberturaLeque); mira(0); mira(C.aberturaLeque); }
+    arco(m.x, m.y, m.raio + 0.22, frac, CORES.prep);
+  }
+  const corM = m.flash > 0 ? "#ffffff" : m.estado === "atordoado" ? "#8f7fb0" : COR_MOB[m.tipo];
+  circulo(m.x, m.y, m.raio, corM, m.estado === "recuperacao" ? "#0b1220" : null, 3);
+  desenharMarcaEVida(m);
+}
+
+function desenhar() {
+  const j = s.j;
+  ctx.fillStyle = CORES.arena; ctx.fillRect(0, 0, tela.width, tela.height);
+  if (ARTE_IMG.chao) {
+    for (let x = 0; x < LARG; x++) for (let y = 0; y < ALT; y++) peca("chao", (x * 73 + y * 37 + x * y) % 4, x + 0.5, y + 0.5);
+  } else {
+    ctx.strokeStyle = CORES.grade; ctx.lineWidth = 1;
+    for (let x = 1; x < LARG; x++) { ctx.beginPath(); ctx.moveTo(x * ESC, 0); ctx.lineTo(x * ESC, tela.height); ctx.stroke(); }
+    for (let y = 1; y < ALT; y++) { ctx.beginPath(); ctx.moveTo(0, y * ESC); ctx.lineTo(tela.width, y * ESC); ctx.stroke(); }
+  }
+
+  // alcance do ataque básico
+  ctx.setLineDash([6, 8]); circulo(j.x, j.y, alcanceAA() + RAIO_M, null, "rgba(77,163,255,0.25)", 1); ctx.setLineDash([]);
+  // destino do movimento
+  const alvo = j.alvo || s.alvoGuardado;
+  if (alvo && !peca("destino", 0, alvo.x, alvo.y)) { ctx.strokeStyle = CORES.jog; ctx.lineWidth = 2; const ax = alvo.x * ESC, ay = alvo.y * ESC;
+    ctx.beginPath(); ctx.moveTo(ax - 6, ay - 6); ctx.lineTo(ax + 6, ay + 6); ctx.moveTo(ax + 6, ay - 6); ctx.lineTo(ax - 6, ay + 6); ctx.stroke(); }
+
+  // áreas no chão dos mobs
+  for (const z of s.zonas) {
+    if (z.estourou) circulo(z.x, z.y, C.raioZona, `rgba(255,90,90,${0.6 * Math.max(0, z.flash) / 0.3})`);
+    else {
+      circulo(z.x, z.y, C.raioZona, "rgba(255,90,90,0.10)", CORES.perigo);
+      circulo(z.x, z.y, C.raioZona * Math.min(1, z.t / C.avisoZona), "rgba(255,90,90,0.28)");
+    }
+  }
+  // área do golpe do mini-chefe
+  for (const i of s.inimigos) if (i.tipo === "chefe") desenharAreaChefe(i);
+
+  // inimigos
+  for (const i of s.inimigos) { if (i.tipo === "chefe") desenharChefe(i); else desenharMob(i); }
+  // anel claro no alvo do ataque básico (inimigo mais perto do mouse)
+  const mira = !s.fim && alvoDoMouse();
+  if (mira) circulo(mira.x, mira.y, mira.raio + 0.12, null, "rgba(255,255,255,0.55)", 1.5);
+
+  // disparos dos mobs
+  for (const t of s.balas) circulo(t.x, t.y, C.raioBala, CORES.perigo, "#ffffff", 1);
+
+  // tiros do jogador
+  for (const t of s.tiros) {
+    if (t.tipo === "aa") { if (!peca("tiro_aa", 0, t.x, t.y, false, Math.atan2(t.alvo.y - t.y, t.alvo.x - t.x))) circulo(t.x, t.y, 0.13, CORES.prep); }
+    else if (t.tipo === "q") { if (!peca("tiro_q", 0, t.x, t.y, false, Math.atan2(t.dy, t.dx))) circulo(t.x, t.y, Math.max(0.15, t.raio), "#ffffff"); }
+    else if (!peca("tiro_w", 0, t.x, t.y, false, Math.atan2(t.dy, t.dx))) circulo(t.x, t.y, Math.max(0.15, t.raio), COR_MARCA);
+  }
+
+  // golpes de perto do lutador
+  const fatia = (x, y, r, ang, meia) => { ctx.beginPath(); ctx.moveTo(x * ESC, y * ESC); ctx.arc(x * ESC, y * ESC, r * ESC, ang - meia, ang + meia); ctx.closePath(); };
+  for (const c of s.cortes) { fatia(c.x, c.y, c.r, c.ang, c.meia); ctx.fillStyle = "rgba(" + c.cor + "," + Math.min(0.6, c.t * 4) + ")"; ctx.fill(); }
+  if (lut() && j.acao && j.acao.tipo === "q" && j.acao.fase === "preparo") {
+    fatia(j.x, j.y, C.alcanceQLut, Math.atan2(j.acao.dy, j.acao.dx), C.arcoQLut); ctx.strokeStyle = "rgba(255,255,255,0.6)"; ctx.lineWidth = 2; ctx.stroke();
+  }
+  // jogador. Quadros: parado 0-1, andando 2-5, preparo 6, tiro 7, avanço 8, aparo 9, atingido 10
+  const a0 = j.acao;
+  const qJ = j.flash > 0 ? 10 : !a0 ? (j.andando ? 2 + animar(8, 4) : animar(2, 2))
+    : a0.tipo === "r" ? 9 : (a0.tipo === "e" || a0.tipo === "w") && a0.fase === "ativo" ? 8 : a0.fase === "preparo" ? 6 : 7;
+  if (!peca("jogador", qJ, j.x, j.y, j.olhar < 0)) circulo(j.x, j.y, RAIO_J, j.flash > 0 ? CORES.perigo : CORES.jog);
+  if (a0 && a0.tipo === "r" && a0.fase === "ativo" && !peca("aparo", animar(12, 3, a0.t), j.x, j.y)) circulo(j.x, j.y, RAIO_J + 0.25, null, "#9be7ff", 4);
+  if (j.aparoFlash > 0) circulo(j.x, j.y, RAIO_J + 0.3 + (0.4 - j.aparoFlash) * 5, null, `rgba(155,231,255,${j.aparoFlash / 0.4})`, 4);
+  if (j.acao) {
+    const a = j.acao, [prep, recup] = tempos(a.tipo);
+    if (a.fase === "preparo") arco(j.x, j.y, RAIO_J + 0.2, prep > 0 ? Math.min(1, a.t / prep) : 1, CORES.prep);
+    else if (a.fase === "recuperacao") arco(j.x, j.y, RAIO_J + 0.2, recup > 0 ? Math.min(1, a.t / recup) : 1, CORES.fraco);
+    if (a.fase === "preparo") {
+      if (a.tipo === "aa") linhaMira(j.x, j.y, a.dx, a.dy, dist(j.x, j.y, a.alvo.x, a.alvo.y), "rgba(255,209,102,0.6)");
+      else if (lut()) {}
+      else if (a.tipo === "q") linhaMira(j.x, j.y, a.dx, a.dy, C.alcanceQ, "rgba(255,255,255,0.6)");
+      else if (a.tipo === "w") linhaMira(j.x, j.y, a.dx, a.dy, C.alcanceW, "rgba(199,125,255,0.7)");
+    }
+  }
+  if (!j.acao && j.recAA > 0 && C.recupAALut > 0) arco(j.x, j.y, RAIO_J + 0.2, 1 - j.recAA / C.recupAALut, CORES.fraco);
+  barraVida(j.x, j.y - RAIO_J - 0.45, j.vida / vidaMaxJ(), CORES.jog);
+
+  // recargas de Q, W, E e R
+  const tam = 44, y0 = tela.height - tam - 12;
+  HABS.forEach((k, i) => {
+    const x0 = 12 + i * (tam + 8), total = RECARGA[k](), r = j.rec[k];
+    ctx.fillStyle = "rgba(17,20,27,0.85)"; ctx.fillRect(x0, y0, tam, tam);
+    const temIcone = peca("icones", i, (x0 + tam / 2) / ESC, (y0 + tam / 2) / ESC);
+    if (temIcone && r <= 0) { ctx.strokeStyle = CORES.jog; ctx.lineWidth = 2; ctx.strokeRect(x0, y0, tam, tam); return; }
+    ctx.strokeStyle = r > 0 ? CORES.grade : CORES.jog; ctx.lineWidth = 2; ctx.strokeRect(x0, y0, tam, tam);
+    if (r > 0 && total > 0) { ctx.fillStyle = "rgba(138,147,166,0.35)"; const h = tam * r / total; ctx.fillRect(x0, y0 + tam - h, tam, h); }
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillStyle = r > 0 ? CORES.fraco : CORES.texto; ctx.font = "600 18px " + FONTE;
+    ctx.fillText(r > 0 ? r.toFixed(1) : k.toUpperCase(), x0 + tam / 2, y0 + tam / 2);
+  });
+  ctx.textBaseline = "alphabetic";
+
+  if (s.fim) {
+    ctx.fillStyle = "rgba(10,12,18,0.72)"; ctx.fillRect(0, 0, tela.width, tela.height);
+    ctx.fillStyle = CORES.texto; ctx.textAlign = "center";
+    ctx.font = "600 40px " + FONTE;
+    ctx.fillText(s.fim === "venceu" ? "Sala limpa" : "Perdeu", tela.width / 2, tela.height / 2 - 24);
+    ctx.font = "18px " + FONTE; ctx.fillStyle = CORES.fraco;
+    ctx.fillText(`Tentativa ${tentativas} · ${s.tempo.toFixed(1)} s · ${s.levados} golpes levados · ${s.aparos} aparos`, tela.width / 2, tela.height / 2 + 12);
+    ctx.fillText(`Usos: ${textoUsos()}`, tela.width / 2, tela.height / 2 + 38);
+    ctx.fillText("Enter para recomeçar", tela.width / 2, tela.height / 2 + 64);
+  }
+  document.getElementById("tentativa").textContent = tentativas;
+  document.getElementById("tempo").textContent = s.tempo.toFixed(1) + " s";
+  document.getElementById("inimigos").textContent = s.inimigos.length;
+  document.getElementById("levados").textContent = s.levados;
+  document.getElementById("aparos").textContent = s.aparos;
+  document.getElementById("usos").textContent = textoUsos();
+}
+
+// ===== Laço com passo fixo =====
+let ultimo = performance.now(), acumulado = 0;
+function quadro(agora) {
+  acumulado += Math.min(0.25, (agora - ultimo) / 1000); ultimo = agora;
+  while (acumulado >= DT) { passo(); acumulado -= DT; }
+  desenhar(); requestAnimationFrame(quadro);
+}
+requestAnimationFrame(quadro);
+
+// ===== Entrada =====
+function posMundo(e) {
+  const r = tela.getBoundingClientRect();
+  return { x: (e.clientX - r.left) / r.width * LARG, y: (e.clientY - r.top) / r.height * ALT };
+}
+let direitoSegurado = false;
+tela.addEventListener("contextmenu", e => e.preventDefault());
+tela.addEventListener("pointerdown", e => {
+  window.focus(); tela.focus({ preventScroll: true });
+  const p = posMundo(e); mouse = p;
+  if (e.button === 2) { direitoSegurado = true; comandoMover(p.x, p.y); }
+  else if (e.button === 0) comandoAtacar();
+});
+window.addEventListener("pointerup", e => { if (e.button === 2) direitoSegurado = false; });
+tela.addEventListener("pointermove", e => {
+  mouse = posMundo(e);
+  if (!direitoSegurado) return;
+  if (!s.j.acao) { s.j.alvo = { ...mouse }; s.j.perseguindo = false; }
+  else s.alvoGuardado = { ...mouse };
+});
+window.addEventListener("keydown", e => {
+  if (["INPUT", "SELECT"].includes(e.target.tagName)) return;
+  const k = e.key.toLowerCase();
+  if (["a", "s", "r", "q", "w", "e", "enter", "f"].includes(k)) e.preventDefault();
+  if (e.repeat && k !== "s") return;
+  if (k === "f") alternarTelaCheia();
+  else if (k === "enter") novoJogo();
+  else if (s.fim) return;
+  else if (k === "a") comandoAtacar();
+  else if (k === "s") comandoParar();
+  else if (HABS.includes(k)) comandoHabilidade(k, mouse.x, mouse.y);
+});
+document.getElementById("recomecar").addEventListener("click", novoJogo);
+
+// ===== Tela cheia =====
+const palco = document.getElementById("palco"), botaoSair = document.getElementById("sair-cheia");
+const emTelaCheia = () => !!document.fullscreenElement || palco.classList.contains("cheia");
+function mostrarSair() { botaoSair.hidden = !emTelaCheia(); }
+async function alternarTelaCheia() {
+  if (emTelaCheia()) {
+    palco.classList.remove("cheia");
+    if (document.fullscreenElement) { try { await document.exitFullscreen(); } catch (_) {} }
+  } else {
+    try { await palco.requestFullscreen(); } catch (_) { palco.classList.add("cheia"); }
+  }
+  mostrarSair(); tela.focus({ preventScroll: true });
+}
+document.getElementById("tela-cheia").addEventListener("click", alternarTelaCheia);
+botaoSair.addEventListener("click", alternarTelaCheia);
+document.addEventListener("fullscreenchange", () => { mostrarSair(); tela.focus({ preventScroll: true }); });
+window.addEventListener("keydown", e => { if (e.key === "Escape" && palco.classList.contains("cheia")) { palco.classList.remove("cheia"); mostrarSair(); } });
+
+// Mostra se o jogo está recebendo o teclado
+const avisoFoco = document.getElementById("aviso-foco");
+const atualizarFoco = () => {
+  const ok = document.hasFocus() && document.activeElement === tela;
+  avisoFoco.innerHTML = ok ? "Teclado ativo no jogo." : "<b>Clique na arena</b> antes de usar o teclado. Se as teclas forem para outro lugar, clique de novo nela.";
+  tela.style.borderColor = ok ? CORES.jog : "";
+};
+tela.addEventListener("focus", atualizarFoco); tela.addEventListener("blur", atualizarFoco);
+window.addEventListener("blur", atualizarFoco); window.addEventListener("focus", atualizarFoco);
+
+// ===== Painel de ajuste =====
+const caixa = document.getElementById("ajustes");
+function montarPainel() {
+  caixa.innerHTML = "";
+  for (const [chave, nome, min, max, passo] of AJUSTES) {
+    if (chave === "#") { const h = document.createElement("h2"); h.textContent = nome; caixa.appendChild(h); continue; }
+    const d = document.createElement("div"); d.className = "ajuste";
+    d.innerHTML = `<label for="aj-${chave}"><span>${nome}</span><span id="v-${chave}">${C[chave]}</span></label>
+      <input type="range" id="aj-${chave}" min="${min}" max="${max}" step="${passo}" value="${C[chave]}">`;
+    d.querySelector("input").addEventListener("input", ev => {
+      C[chave] = parseFloat(ev.target.value);
+      document.getElementById("v-" + chave).textContent = C[chave];
+    });
+    caixa.appendChild(d);
+  }
+}
+montarPainel();
+const seletorBrasao = document.getElementById("brasao");
+seletorBrasao.addEventListener("change", () => { brasao = seletorBrasao.value; seletorBrasao.blur(); novoJogo(); });
+const seletorModo = document.getElementById("modo");
+seletorModo.value = C.modoAviso;
+seletorModo.addEventListener("change", () => { C.modoAviso = seletorModo.value; });
+document.getElementById("padrao").addEventListener("click", () => { Object.assign(C, PADRAO); montarPainel(); seletorModo.value = C.modoAviso; });
+</script>

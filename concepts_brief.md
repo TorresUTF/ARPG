@@ -11,7 +11,7 @@ A hipótese revisada:
 
 - **Mundo.** Um mapa aberto visto em câmera alta, onde o jogador explora. Não existe terreno contínuo na escala de batalha. A câmera só desce para o modo batalha (a escala do protótipo, arena de cerca de 24 × 16 m) dentro de lugares fechados: chefes da história, dungeons que terminam em horda (mobs fracos mais um mini-chefe) e emboscadas. Névoa cobre as áreas não exploradas. Fogueiras salvam o jogo e permitem teletransporte.
 - **Mobs.** Inimigos fracos com uma habilidade cada, que morrem entre dois ataques básicos e uma rotação de habilidades. A horda funciona como um jogo de desviar: muitos disparos lentos e anunciados ao mesmo tempo.
-- **Progressão.** Artefatos (loot) trocam a habilidade de uma tecla. Armaduras dão uma passiva. Níveis aumentam o dano do jogador e nunca a resistência: o chefe continua matando em 3 a 5 golpes.
+- **Progressão.** Builds em quatro camadas: o brasão (arquétipo) muda o ataque básico e dá um bônus de status base; as habilidades são loot de lugar fixo e trocam Q, W, E e R; cada nível aumenta um atributo, que fortalece as habilidades e nunca a vida; a armadura dá uma passiva. Os detalhes estão no item 4 das decisões.
 - **Tecnologia.** TypeScript, Canvas 2D, Vite e Vitest, como já está no `CLAUDE.md`. Mapas no editor Tiled. Empacotamento para a Steam mais tarde.
 - **Plano.** Construir as fundações e uma primeira fatia (uma área, uma dungeon, um chefe, cerca de três artefatos, uma fogueira) e cronometrar. Meta declarada pelo autor: uma área a cada duas semanas, jogo pronto em dois anos, com 80 a 120 horas e 20 a 30 chefes.
 - **Equipe.** O autor, cerca de 20 horas por semana, com um assistente de IA para o código. Um irmão talvez ajude.
@@ -169,17 +169,37 @@ Em aberto, para o autor decidir antes do `/egm-draft`:
 
    Limites desse teste: uma pessoa, um dia, uma sala, três tipos de mob. Ele não diz se a décima dungeon ainda diverte. O autor rejeitou exigir o uso de todas as habilidades: uma habilidade pode ficar reservada para oponentes fortes.
 3. (Resolvida em 2026-11-11.) O nível tem um teto de dano por área, com poucos níveis na primeira fatia.
-4. (Em aberto.) Papel das teclas e arquétipos. O autor quer arquétipos (tanque, atirador, lutador), cada um com habilidades próprias que escalam com um atributo (vida, destreza, força) comprado com níveis. A ideia é incentivar builds coesas e permitir híbridas no fim do jogo. Dois problemas a resolver:
-   * um tanque que investe em vida contradiz a decisão "o nível nunca aumenta a resistência; o chefe mata em 3 a 5 golpes";
-   * cada arquétipo é um conjunto inteiro de habilidades a desenhar e ajustar contra todos os chefes. Só o atirador foi testado.
+4. (Resolvida em 2026-11-12; o segundo arquétipo foi provado em protótipo.) Builds em quatro camadas, pedidas pelo autor:
+   * **brasão** (arquétipo): muda o ataque básico e dá um bônus de status base. Exemplos do autor: tanque com 100% a mais de vida, mago com recarga menor;
+   * **habilidades** (Q, W, E, R): loot de lugar fixo, equipadas e desequipadas, cada uma escalando com um atributo;
+   * **atributos**: cada nível aumenta um atributo;
+   * **armadura**: dá uma passiva, com um preço. A mais frágil dá a passiva mais forte.
+
+   O autor quer que builds mistas funcionem (mago assassino, lutador com passiva elétrica). Regras confirmadas por ele em 2026-11-12:
+   * o brasão não restringe habilidades: qualquer habilidade entra em qualquer brasão;
+   * nenhum atributo aumenta a vida. A vida vem só do brasão e da armadura, para o desvio continuar valendo;
+   * brasão, habilidades e armadura são trocados só na fogueira; os pontos são redistribuídos na fogueira com um item raro de lugar fixo;
+   * a primeira fatia passa a ter dois brasões, dois atributos, cerca de seis habilidades e duas armaduras.
+
+   Resultado do protótipo `prototipos/lutador` (a sala da horda com um brasão de perto: 8 de vida, golpe corpo a corpo, Q em arco, W investida que marca), jogado pelo autor:
+   * dá para jogar de perto e é divertido, sem mudar mobs nem mini-chefe;
+   * com os números iniciais o lutador estava forte demais: colar no mini-chefe o matava antes de ele reagir. O autor reduziu o alcance do golpe de 1,3 m para 0,8 m e o dano de 4 para 3, e ficou bom. Depois preferiu manter o dano 4 com o ataque mais lento, por combinar mais com o lutador;
+   * versão aprovada pelo autor em 2026-11-12: preparo de 0,35 s, e a recuperação do golpe virou uma espera de 0,5 s até o próximo ataque básico, que não prende o personagem no lugar. Ele bate e pode sair. Fica por decidir se o atirador segue a mesma regra;
+   * mais velocidade de movimento para o lutador é uma ideia do autor, que ele mesmo pesa contra os dois avanços (W e E) que o brasão já tem.
+
+   Custo que continua valendo: cada brasão é um ataque básico a desenhar e ajustar contra todos os chefes, e cada atributo pede habilidades para as quatro teclas.
 5. (Resolvida em 2026-11-11.) Morte no estilo Dark Souls: a experiência não gasta fica no lugar da morte e pode ser recuperada. Ela só vira nível quando o jogador descansa na fogueira. Como as lutas acontecem em lugares fechados, o salvamento guarda o nome do lugar onde a experiência ficou.
-6. (Em teste.) O mapa é explorável, contra a recomendação de três revisores, porque a exploração é metade do jogo pretendido e nunca foi testada. O protótipo `prototipos/viagem` testa o modo viagem com o mapa em um arquivo de dados, sem o Tiled.
+6. (Resolvida em 2026-11-12; ver o item 10.) O mapa é explorável, contra a recomendação de três revisores, porque a exploração é metade do jogo pretendido e nunca foi testada. O protótipo `prototipos/viagem` testa o modo viagem com o mapa em um arquivo de dados, sem o Tiled.
 7. (Provisória.) Jogo mínimo: três áreas e três chefes, a rever depois da fatia cronometrada.
 8. (Resolvida em 2026-11-11.) A arte continua provisória até a fatia. Regra fixada: as áreas de acerto e de aviso vêm dos dados em metros, nunca do tamanho da imagem.
-9. (Resolvida em 2026-11-11.) Os artefatos ficam em lugar fixo: cada dungeon e cada chefe da história entrega um artefato definido. O autor rejeitou o sorteio com raridade porque ele leva a repetir a mesma dungeon até o item cair, e ele não quer farm de loot no jogo. Fica em aberto adaptar o modelo do Silksong: brasões que mudam o ataque básico e a quantidade de espaços (candidato a arquétipo, item 4), ferramentas por categoria e espaços extras achados na exploração.
+9. (Resolvida em 2026-11-11.) Os artefatos ficam em lugar fixo: cada dungeon e cada chefe da história entrega um artefato definido. O autor rejeitou o sorteio com raridade porque ele leva a repetir a mesma dungeon até o item cair, e ele não quer farm de loot no jogo. Do modelo do Silksong foi adotado o brasão como arquétipo (item 4). Ferramentas por categoria e espaços extras achados na exploração ficam como ideias, sem decisão.
 10. (Resolvida em 2026-11-11, depois de o autor jogar `prototipos/viagem`.) O modo viagem foi aprovado, com estes acréscimos pedidos pelo autor e já no protótipo:
     * relevo e barreiras (montanhas, rio, pontes), para o jogador ter que cumprir uma sequência até chegar aonde quer;
     * três poções que curam um pouco fora da fogueira;
     * descansar na fogueira recupera vida e poções e faz as emboscadas voltarem. Refazer o caminho tem custo, seguir com pouca vida tem risco, e quem quiser pode repetir emboscadas para ganhar experiência.
 
     Consequência aceita pelo autor: repetir emboscadas é farm de experiência. O teto de dano por área (item 3) é o que limita o efeito.
+
+    Acréscimos de 2026-11-12, também aprovados pelo autor depois de jogar:
+    * o mapa é maior que a tela e a câmera acompanha o personagem;
+    * o clique leva em linha reta e o personagem para no relevo. Não há trajeto automático: ele tirava do jogador a decisão de achar a passagem, mostrava o caminho por dentro da névoa e levava a emboscadas não escolhidas.
