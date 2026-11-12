@@ -159,11 +159,27 @@ Decididas:
 
 Em aberto, para o autor decidir antes do `/egm-draft`:
 
-1. A postura continua sendo pilar? Ela nunca foi testada.
-2. O protótipo de horda (`prototipos/horda`) passa no critério? Critério definido pelo autor antes de jogar: "depois de limpar a sala, quero jogar de novo sem ser obrigado". O autor rejeitou exigir o uso de todas as habilidades: uma habilidade pode ficar reservada para oponentes fortes, e conjuntos diferentes podem servir melhor contra hordas. O protótipo mostra quantas vezes cada habilidade foi usada, só como observação.
-3. Qual é o limite do nível: teto de dano, dano só na janela vulnerável, ou outro?
-4. Cada tecla tem papel fixo? Quais são os papéis?
-5. O que se perde ao morrer?
-6. Na primeira fatia, o mapa é explorável ou é uma lista de lugares ligados?
-7. Qual é o jogo mínimo que pode ser lançado sozinho?
-8. De onde vem a arte e qual é o estilo?
+1. (Resolvida em 2026-11-11.) A postura deixa de ser pilar. Ela nunca existiu no protótipo, e a marca do W mais o atordoamento do aparo já abrem a janela de dano.
+2. (Resolvida em 2026-11-11.) O protótipo de horda (`prototipos/horda`) passou no critério definido pelo autor antes de jogar: "depois de limpar a sala, quero jogar de novo sem ser obrigado". O autor jogou várias vezes. O que ele observou:
+   * a sala ficou legível, mas só depois de aumentar o tempo de aviso dos mobs;
+   * desviar e atacar ao mesmo tempo diverte, então a pergunta "cabe mais um ataque?" continua valendo contra hordas;
+   * o aparo (R) não serve para matar mobs, mas tira o jogador de situações ruins;
+   * a marca (W) só rendeu contra o mini-chefe;
+   * com 8 mobs a sala continuou boa.
+
+   Limites desse teste: uma pessoa, um dia, uma sala, três tipos de mob. Ele não diz se a décima dungeon ainda diverte. O autor rejeitou exigir o uso de todas as habilidades: uma habilidade pode ficar reservada para oponentes fortes.
+3. (Resolvida em 2026-11-11.) O nível tem um teto de dano por área, com poucos níveis na primeira fatia.
+4. (Em aberto.) Papel das teclas e arquétipos. O autor quer arquétipos (tanque, atirador, lutador), cada um com habilidades próprias que escalam com um atributo (vida, destreza, força) comprado com níveis. A ideia é incentivar builds coesas e permitir híbridas no fim do jogo. Dois problemas a resolver:
+   * um tanque que investe em vida contradiz a decisão "o nível nunca aumenta a resistência; o chefe mata em 3 a 5 golpes";
+   * cada arquétipo é um conjunto inteiro de habilidades a desenhar e ajustar contra todos os chefes. Só o atirador foi testado.
+5. (Resolvida em 2026-11-11.) Morte no estilo Dark Souls: a experiência não gasta fica no lugar da morte e pode ser recuperada. Ela só vira nível quando o jogador descansa na fogueira. Como as lutas acontecem em lugares fechados, o salvamento guarda o nome do lugar onde a experiência ficou.
+6. (Em teste.) O mapa é explorável, contra a recomendação de três revisores, porque a exploração é metade do jogo pretendido e nunca foi testada. O protótipo `prototipos/viagem` testa o modo viagem com o mapa em um arquivo de dados, sem o Tiled.
+7. (Provisória.) Jogo mínimo: três áreas e três chefes, a rever depois da fatia cronometrada.
+8. (Resolvida em 2026-11-11.) A arte continua provisória até a fatia. Regra fixada: as áreas de acerto e de aviso vêm dos dados em metros, nunca do tamanho da imagem.
+9. (Resolvida em 2026-11-11.) Os artefatos ficam em lugar fixo: cada dungeon e cada chefe da história entrega um artefato definido. O autor rejeitou o sorteio com raridade porque ele leva a repetir a mesma dungeon até o item cair, e ele não quer farm de loot no jogo. Fica em aberto adaptar o modelo do Silksong: brasões que mudam o ataque básico e a quantidade de espaços (candidato a arquétipo, item 4), ferramentas por categoria e espaços extras achados na exploração.
+10. (Resolvida em 2026-11-11, depois de o autor jogar `prototipos/viagem`.) O modo viagem foi aprovado, com estes acréscimos pedidos pelo autor e já no protótipo:
+    * relevo e barreiras (montanhas, rio, pontes), para o jogador ter que cumprir uma sequência até chegar aonde quer;
+    * três poções que curam um pouco fora da fogueira;
+    * descansar na fogueira recupera vida e poções e faz as emboscadas voltarem. Refazer o caminho tem custo, seguir com pouca vida tem risco, e quem quiser pode repetir emboscadas para ganhar experiência.
+
+    Consequência aceita pelo autor: repetir emboscadas é farm de experiência. O teto de dano por área (item 3) é o que limita o efeito.
