@@ -211,3 +211,80 @@ The boss is a large round clay training dummy bound with ropes to two thick wood
 
 The color change must cover the entire body so each state reads instantly at small size. Keep every cell centered with the whole boss visible and a small margin. Do not use red anywhere, do not draw a floor, shadows shaped like areas, scenery, text, numbers, labels or borders between cells.
 ```
+
+## Demais peças em três prompts (Nano Banana)
+
+Pedido do autor em 2026-11-13, depois de aprovar a folha do chefe no estilo 3D semi-realista. Use na mesma conversa do Gemini em que a folha do chefe foi gerada, com a folha anexada como referência. As peças ficam em três imagens porque, com muitos itens numa imagem só, o gerador tende a misturar ou pular peças.
+
+### 1. Personagem (11 quadros)
+
+```
+Using the attached boss sheet as the style reference (semi-realistic 3D render, physically based materials, soft global illumination, crisp contact shadows, slightly stylized chunky proportions for readability, clean high-end modern action game look), create an animation sheet for the player character of the same top-down action game.
+
+The player is a lean hooded marksman in a light sky-blue hooded cloak and dark leather armor, holding a compact hand crossbow, seen from the same high camera tilted about 60 degrees looking down, facing right. The cloak must be a clear light sky-blue, never dark blue. The character is much smaller than the boss in the game, so keep a bold, simple silhouette that reads at small size.
+
+Draw the exact same character, same size and same camera angle, eleven times, in a clean grid of 4 columns and 3 rows of equal square cells on a plain flat neutral grey background. Leave the twelfth cell (bottom right) empty grey. Each cell shows one frame, in this order, left to right, top to bottom:
+
+1. Idle: standing relaxed, crossbow lowered.
+2. Idle: same as 1, cloak slightly shifted by breathing.
+3. Walking: left foot forward.
+4. Walking: feet passing, body upright.
+5. Walking: right foot forward.
+6. Walking: feet passing, cloak swinging.
+7. Shot windup: crossbow raised and aimed to the right, body tense.
+8. Shooting: crossbow firing to the right with a small pale-blue muzzle flash, slight recoil.
+9. Dashing to the right: body leaning low and forward, cloak streaming behind.
+10. Parrying: crossbow held across the body as a guard, bracing stance, a faint pale-blue shimmer around him.
+11. Hit: flinching backward, head turned away.
+
+Keep every cell centered with the whole character visible and a small margin. Do not use red anywhere, do not draw a floor, scenery, text, numbers, labels or borders between cells.
+```
+
+### 2. Tiros e efeitos (14 peças)
+
+```
+Using the attached boss sheet as the style reference (semi-realistic 3D render, physically based materials, soft global illumination, clean high-end modern action game look), create a sheet of projectiles and visual effects for the same top-down action game, seen from the same high camera looking down.
+
+Use a clean grid of 4 columns and 4 rows of equal square cells on a plain flat neutral grey background. Each row is one group, left to right:
+
+Row 1, projectiles flying to the right:
+1. A small, fast crossbow bolt with a short pale-blue trail (basic attack).
+2. A heavier crossbow bolt with a bright light-blue glowing energy trail (skill shot).
+3. A crossbow bolt wrapped in swirling violet energy (marking shot).
+4. A thin glowing violet ring seen from above, empty center, the mark that circles a target.
+
+Row 2, small markers:
+5. A small violet charge gem, empty and dim.
+6. The same violet charge gem, full and glowing.
+7. A small pale-blue ground marker seen from above, showing where the player clicked to move.
+8. Empty grey cell.
+
+Row 3, a violet magical explosion seen from above, four animation frames:
+9. Small bright violet flash.
+10. Expanding violet burst.
+11. Wide ring of violet sparks.
+12. Fading violet smoke and sparks.
+
+Row 4, a pale-blue protective shimmer around an invisible character, seen from above, three animation frames:
+13. Faint shimmer.
+14. Brightest shimmer.
+15. Fading shimmer.
+16. Empty grey cell.
+
+Each effect is centered in its cell with a small margin. Violet is only for the mark effects, pale blue only for the player's effects. Do not use red anywhere, do not draw characters, a floor, scenery, text, numbers, labels or borders between cells.
+```
+
+### 3. Ícones das habilidades (4)
+
+```
+Using the attached boss sheet as the style reference (semi-realistic 3D render, physically based materials, soft lighting, clean high-end modern action game look), create four ability icons for the same action game, in a single row of 4 equal square cells on a plain flat neutral grey background.
+
+Each icon is a square with a dark worn-metal frame and a dark background, with one bold, simple symbol in the center that reads clearly at 44 pixels. Left to right:
+
+1. Q: a glowing light-blue crossbow bolt flying diagonally.
+2. W: a crossbow bolt wrapped in violet energy, with a small violet ring behind it.
+3. E: a hooded light-blue figure dashing forward with speed lines.
+4. R: a crossbow raised as a guard, with a pale-blue shimmer around it.
+
+All four icons share the same frame, size and lighting. Do not use red anywhere, and do not draw text, letters, numbers or labels.
+```
