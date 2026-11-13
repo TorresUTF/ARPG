@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ARPG</title>
+    <style>
+      :root { color-scheme: dark; --fundo: #11141b; --texto: #dfe4ee; --fraco: #8a93a6; --borda: #2c3344; --destaque: #4da3ff; }
+      body { margin: 0; background: var(--fundo); color: var(--texto); font-family: "Segoe UI", system-ui, sans-serif; }
+      main { max-width: 980px; margin: 0 auto; padding: 16px; display: grid; gap: 12px; }
+      h1 { font-size: 18px; margin: 0; }
+      p { margin: 0; color: var(--fraco); line-height: 1.5; }
+      p b { color: var(--texto); }
+      canvas { width: 100%; height: auto; display: block; border: 1px solid var(--borda); border-radius: 6px; cursor: crosshair; outline: none; }
+      canvas:focus-visible { border-color: var(--destaque); }
+      .barra { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; color: var(--fraco); font-variant-numeric: tabular-nums; }
+      .barra strong { color: var(--texto); }
+      button { font: inherit; background: #222838; color: var(--texto); border: 1px solid var(--borda); border-radius: 5px; padding: 6px 12px; cursor: pointer; }
+      details { border: 1px solid var(--borda); border-radius: 6px; padding: 10px 14px; }
+      summary { cursor: pointer; font-weight: 600; }
+      #ajustes { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px 24px; margin-top: 12px; }
+      #ajustes h2 { grid-column: 1 / -1; font-size: 13px; margin: 6px 0 0; text-transform: uppercase; letter-spacing: .04em; }
+      #ajustes > button { grid-column: 1 / -1; justify-self: start; }
+      .ajuste { display: grid; gap: 2px; }
+      .ajuste label { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--fraco); }
+      .ajuste label span:last-child { color: var(--texto); }
+      .ajuste input { width: 100%; accent-color: var(--destaque); }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>ARPG: base da luta</h1>
+      <p><b>Botão direito</b>: mover (pode segurar). <b>Botão esquerdo</b> ou <b>A</b>: ataque básico no inimigo mais perto do mouse (anel claro); se estiver longe, o personagem anda até o alcance. <b>S</b>: parar. <b>Enter</b>: recomeçar. Clique na arena antes de usar o teclado.</p>
+      <canvas id="tela" width="960" height="640" tabindex="0"></canvas>
+      <div class="barra">
+        <span>Tentativa: <strong id="tentativa">1</strong></span>
+        <span>Ação: <strong id="fase">livre</strong></span>
+        <span>Semente: <strong id="semente"></strong></span>
+        <button id="recomecar" type="button">Recomeçar (Enter)</button>
+      </div>
+      <details open>
+        <summary>Painel de ajuste (vale na hora; os marcados com ↻ recomeçam a luta)</summary>
+        <div id="ajustes"></div>
+      </details>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

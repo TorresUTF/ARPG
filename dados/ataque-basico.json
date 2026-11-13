@@ -1,0 +1,9 @@
+{
+  "preparo": 0.25,
+  "ativo": 0,
+  "recuperacao": 0.2,
+  "alcance": 6,
+  "velocidadeProjetil": 20,
+  "dano": 2,
+  "guardaComando": 0.2
+}

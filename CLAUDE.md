@@ -67,4 +67,11 @@ Diga, em poucas linhas:
 - Sem serviços pagos e sem dependências além das necessárias.
 - O visual pode migrar para 3D no futuro trocando apenas `src/apresentacao/`. Não antecipe isso no código.
 
-Quando o projeto for criado, registrar aqui os comandos exatos para instalar, rodar o jogo e rodar os testes.
+## Comandos
+
+Precisa do Node.js instalado (versão 20 ou mais nova). Na pasta do projeto:
+
+- Instalar (uma vez, e de novo quando `package.json` mudar): `npm install`
+- Rodar o jogo: `npm run jogar` e abrir o endereço que aparecer (normalmente http://localhost:5173)
+- Rodar os testes: `npm run testar`
+- Conferir tipos e testes juntos: `npm run verificar`
