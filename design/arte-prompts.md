@@ -189,3 +189,24 @@ Os nomes entre parênteses são os arquivos do `CONTRATO.md`. Use a mesma sement
 ### Fora da lista
 
 Ficam no código, sem arte: as áreas de golpe no chão, as barras de vida, as linhas de mira, o arco de preparo e o anel de alcance. Por isso nenhum prompt pede vermelho.
+
+---
+
+## Folha do chefe em um prompt só (feito para o Nano Banana)
+
+Pedido do autor em 2026-11-13: gerar os 7 estados do chefe numa imagem só, sem editar prompt. Anexe ao gerador a imagem de estilo escolhida na etapa 1 e cole o texto abaixo sem mudar nada. O Nano Banana não tem campo de prompt negativo, então as proibições estão escritas dentro do texto.
+
+```
+Using the attached image as the style reference (same rendering, lighting, materials and level of detail), create a character sheet for a top-down action game boss.
+
+The boss is a large round clay training dummy bound with ropes to two thick wooden posts, seen from a high camera tilted about 60 degrees looking down, facing right. Draw the exact same boss, same size, same pose and same camera angle, seven times, in a clean grid of 4 columns and 2 rows of equal square cells on a plain flat neutral grey background. Leave the eighth cell (bottom right) empty grey. Each cell shows one state, in this order, left to right, top to bottom:
+
+1. Normal: natural clay color, calm, ropes taut.
+2. Charging the circle attack: the whole body glows deep dark blue from within.
+3. Charging the saturn attack: the whole body glows bright yellow from within.
+4. Charging the line attack: the whole body glows bright green from within.
+5. Recovering after an attack: body darkened to a dull brown, slumped forward, ropes slack.
+6. Stunned after a parry: body turned flat grey and tilted to one side, with a few small spinning white stars above it. It must look clearly different from state 5.
+7. Taking damage: the whole silhouette flashed pure white, same outline as state 1.
+
+The color change must cover the entire body so each state reads instantly at small size. Keep every cell centered with the whole boss visible and a small margin. Do not use red anywhere, do not draw a floor, shadows shaped like areas, scenery, text, numbers, labels or borders between cells.
