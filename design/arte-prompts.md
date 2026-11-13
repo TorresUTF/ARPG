@@ -210,3 +210,4 @@ The boss is a large round clay training dummy bound with ropes to two thick wood
 7. Taking damage: the whole silhouette flashed pure white, same outline as state 1.
 
 The color change must cover the entire body so each state reads instantly at small size. Keep every cell centered with the whole boss visible and a small margin. Do not use red anywhere, do not draw a floor, shadows shaped like areas, scenery, text, numbers, labels or borders between cells.
+```
