@@ -449,8 +449,9 @@ function desenhar() {
   const j = s.j, b = s.b;
   ctx.fillStyle = CORES.arena; ctx.fillRect(0, 0, tela.width, tela.height);
   if (ARTE_IMG.chao) {
-    // piso: uma variação sorteada (sempre a mesma) por casa de 1 m
-    for (let x = 0; x < LARG; x++) for (let y = 0; y < ALT; y++) peca("chao", (x * 73 + y * 37 + x * y) % 4, x + 0.5, y + 0.5);
+    // piso: uma variação sorteada (sempre a mesma) por ladrilho; o tamanho do ladrilho vem da arte
+    const L = ARTE_IMG.chao.height / ((window.ARTE_PPM || {}).chao || 20);
+    for (let i = 0; i * L < LARG; i++) for (let k = 0; k * L < ALT; k++) peca("chao", (i * 73 + k * 37 + i * k) % 4, (i + 0.5) * L, (k + 0.5) * L);
   } else {
     // grade de 1 metro
     ctx.strokeStyle = CORES.grade; ctx.lineWidth = 1;

@@ -2,7 +2,7 @@
 
 Uso: python3 gerar.py
 Saída: os PNGs nesta pasta e arte.js (window.ARTE e window.ARTE_PPM).
-O piso e os ícones ainda não têm arte final: vêm da pixel art (../arte/arte.js).
+Os ícones ainda não têm arte final: vêm da pixel art (../arte/arte.js).
 """
 import base64, io, json, os, re
 import numpy as np
@@ -113,18 +113,27 @@ pecas["destino"] = folha(montar([ef[6]], 48, ocupa=0.9))
 pecas["explosao"] = folha(montar(ef[8:12], 256))
 pecas["aparo"] = folha(montar(ef[12:15], 160))
 
+# Piso: 4 ladrilhos de 4 m. As bordas de todos viram o mesmo trecho do ladrilho liso (deslocado meio
+# ladrilho), então qualquer ladrilho emenda sem costura com qualquer outro. Escurecido para os personagens se destacarem.
+LADO = 320  # 4 m
+pisos = [Image.fromarray(c.astype(np.uint8)).resize((LADO, LADO), Image.LANCZOS) for c in grade("chao.jpg", 2, 2)]
+base = np.roll(np.asarray(pisos[0], np.float32), (LADO // 2, LADO // 2), axis=(0, 1))
+u = np.abs(np.linspace(-1, 1, LADO))
+peso = np.clip((1 - np.maximum.outer(u, u)) / 0.35, 0, 1)[..., None]  # 1 no meio, 0 na borda
+pecas["chao"] = folha([Image.fromarray(((np.asarray(p, np.float32) * peso + base * (1 - peso)) * 0.8).astype(np.uint8)).convert("RGBA") for p in pisos])
+
 for nome, im in pecas.items():
     im.save(os.path.join(AQUI, nome + ".png"), optimize=True)
 
 # arte.js: peças novas + piso e ícones da pixel art
 antigo = open(os.path.join(AQUI, "..", "arte", "arte.js"), encoding="utf-8").read()
-arte = {k: v for k, v in re.findall(r'"?(\w+)"?\s*:\s*"(data:image/png;base64,[^"]+)"', antigo) if k in ("chao", "icones")}
+arte = {k: v for k, v in re.findall(r'"?(\w+)"?\s*:\s*"(data:image/png;base64,[^"]+)"', antigo) if k in ("icones",)}
 for nome, im in pecas.items():
     b = io.BytesIO(); im.save(b, "PNG", optimize=True)
     arte[nome] = "data:image/png;base64," + base64.b64encode(b.getvalue()).decode()
 ppm = {nome: PPM for nome in pecas}
 with open(os.path.join(AQUI, "arte.js"), "w", encoding="utf-8") as f:
-    f.write("// Gerado por gerar.py. Arte final em teste (Nano Banana), piso e ícones ainda da pixel art.\n")
+    f.write("// Gerado por gerar.py. Arte final em teste (Nano Banana), ícones ainda da pixel art.\n")
     f.write("window.ARTE = " + json.dumps(arte, indent=0) + ";\n")
     f.write("window.ARTE_PPM = " + json.dumps(ppm) + ";\n")
 print({k: v.size for k, v in pecas.items()}, sorted(arte))
