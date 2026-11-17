@@ -1,5 +1,7 @@
 # Plano: primeira versão jogável
 
+**Status:** `TO-DO`
+
 Combinado com Gabriel em 10/11/2026. Projeto pessoal, sem prazo.
 
 **Objetivo:** ter a primeira versão jogável no navegador, com o escopo do `VISAO.md`: um personagem, quatro habilidades, um chefe e uma arena.
