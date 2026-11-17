@@ -1,0 +1,1482 @@
+<title>Viagem em 3D</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* O protótipo da viagem (mapa + lutas contra hordas) com o desenho em 3D. Código descartável.
+   A arena são duas telas empilhadas: a cena 3D embaixo e, por cima, a que desenha vida e textos e recebe o mouse. */
+:root {
+  --fundo: #11141b;
+  --arena: #171b24;
+  --grade: #222838;
+  --texto: #dfe4ee;
+  --texto-fraco: #8a93a6;
+  --jogador: #4da3ff;
+  --perigo: #ff5a5a;
+  --preparo: #ffd166;
+  --borda: #2c3344;
+  --fonte: "Segoe UI", system-ui, -apple-system, sans-serif;
+  color-scheme: dark;
+}
+html, body { background: var(--fundo); color: var(--texto); font-family: var(--fonte); }
+body { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 16px; }
+main { max-width: 980px; margin: 0 auto; display: grid; gap: 14px; }
+h1 { font-size: 18px; margin: 0; font-weight: 600; letter-spacing: .02em; }
+h2 { font-size: 13px; margin: 6px 0 0; font-weight: 600; color: var(--texto); grid-column: 1 / -1; letter-spacing: .04em; text-transform: uppercase; }
+.ajuda { color: var(--texto-fraco); margin: 0; line-height: 1.5; }
+.ajuda b { color: var(--texto); font-weight: 600; }
+canvas { width: 100%; max-width: 100%; height: auto; display: block; background: var(--arena); border: 1px solid var(--borda); border-radius: 6px; cursor: crosshair; touch-action: none; outline: none; }
+.barra { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; font-variant-numeric: tabular-nums; color: var(--texto-fraco); }
+.barra strong { color: var(--texto); }
+button, select { font: inherit; background: var(--grade); color: var(--texto); border: 1px solid var(--borda); border-radius: 5px; padding: 6px 12px; cursor: pointer; }
+button:hover { border-color: var(--jogador); }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--jogador); outline-offset: 2px; }
+details { border: 1px solid var(--borda); border-radius: 6px; padding: 10px 14px; }
+summary { cursor: pointer; font-weight: 600; }
+.ajustes { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px 24px; margin-top: 12px; }
+.ajuste { display: grid; gap: 2px; min-width: 0; }
+.ajuste label { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--texto-fraco); }
+.ajuste label span:last-child { color: var(--texto); font-variant-numeric: tabular-nums; }
+.ajuste input[type=range] { width: 100%; accent-color: var(--jogador); }
+#palco { display: grid; }
+#palco.cheia, #palco:fullscreen { position: fixed; inset: 0; z-index: 50; background: #000; place-items: center; padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px); }
+#palco.cheia canvas, #palco:fullscreen canvas { width: min(100vw, 150vh); max-width: none; border-radius: 0; border: 0; }
+#palco canvas { grid-area: 1 / 1; }
+#tela { background: transparent; position: relative; }
+#erro3d { grid-area: 1 / 1; place-self: center; padding: 16px; text-align: center; }
+#sair-cheia { position: absolute; top: calc(12px + env(safe-area-inset-top, 0px)); right: calc(12px + env(safe-area-inset-right, 0px)); }
+.marcar { display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--texto-fraco); }
+</style>
+
+<main>
+  <h1>Protótipo da viagem em 3D</h1>
+  <p class="ajuda"><b>No mapa:</b> <b>botão direito</b> move (pode segurar); o personagem vai reto até o clique e para no relevo; achar o passo da montanha e a ponte é com você. A névoa some por onde você passa. Cada lugar tem um <b>anel no chão</b>: é ali que se para. Um <b>?</b> piscando na névoa é uma dica de que há algo ali. Pare em cima de uma <b>dungeon</b> ou do <b>chefe</b> e aperte <b>Espaço</b> para entrar. <b>Fogueira</b>: <b>Espaço</b> para descansar; recupera a vida e as poções, vira o ponto de retorno e faz as emboscadas voltarem. <b>Tecla 1</b>: beber uma poção (no mapa é na hora; na luta você fica parado até terminar). <b>Baú</b>: abre ao encostar. <b>Emboscadas</b> ficam escondidas nas passagens estreitas e começam sozinhas. A vida não volta entre as lutas. Se morrer, você volta à última fogueira, como se tivesse descansado.</p>
+  <p class="ajuda"><b>Na luta:</b> <b>botão direito</b>: mover (pode segurar). <b>Botão esquerdo</b> ou <b>A</b>: ataque básico no inimigo mais perto do mouse (ele fica com um anel claro no chão; se estiver longe, você anda até o alcance). <b>Q</b>: tiro mirado. <b>W</b>: tiro mirado que marca um inimigo; mais 3 ataques básicos nele e a marca explode. <b>E</b>: avanço na direção do mouse. <b>R</b>: aparo; anula um golpe ou disparo que cair dentro da janela curta e atordoa quem atacou. <b>S</b>: parar. <b>Espaço</b>: voltar ao mapa quando a luta acaba. <b>F</b>: tela cheia.</p>
+  <p class="ajuda">Mobs, cada um com um disparo lento: <b style="color:#e08a3c">laranja</b> atira em linha reta, <b style="color:#d46a9f">rosa</b> marca uma área no chão que explode, <b style="color:#3cc4c4">azul-esverdeado</b> atira em leque. O laranja tem um chifre, o rosa parece um cogumelo e o azul-esverdeado tem três pontas. O mob cresce, brilha e ganha um anel amarelo no chão enquanto prepara. O <b>mini-chefe</b> é o boneco do kiting com menos vida. Limpe a sala para vencer.</p>
+  <p class="ajuda" id="aviso-foco"><b>Clique na arena</b> antes de usar o teclado. Se as teclas forem para outro lugar, clique de novo nela.</p>
+  <div id="palco">
+    <canvas id="tela3d" width="960" height="640" aria-hidden="true"></canvas>
+    <canvas id="tela" width="1920" height="1280" tabindex="0"></canvas>
+    <p id="erro3d" class="ajuda" hidden></p>
+    <button id="sair-cheia" type="button" hidden>Sair da tela cheia (F)</button>
+  </div>
+  <div class="barra">
+    <span>Lugares descobertos: <strong id="descobertos">0</strong></span>
+    <span>Lutas vencidas: <strong id="limpos">0</strong></span>
+    <span>Baús: <strong id="baus">0</strong></span>
+    <span>Mortes: <strong id="mortes">0</strong></span>
+    <span>Tempo no mapa: <strong id="tempo">0 s</strong></span>
+    <span>Tempo em luta: <strong id="tempo-luta">0 s</strong></span>
+    <button id="recomecar" type="button">Recomeçar o mapa</button>
+    <button id="tela-cheia" type="button">Tela cheia (F)</button>
+  </div>
+  <details open>
+    <summary>Painel de ajuste (vale na hora; a vida dos inimigos vale na próxima luta)</summary>
+    <div class="ajustes" id="ajustes"></div>
+    <div class="barra" style="margin-top:12px">
+      <label class="marcar" for="modo">Área do golpe do mini-chefe:
+        <select id="modo">
+          <option value="completa">Completa (desde o início)</option>
+          <option value="parcial">Parcial (aparece no fim do aviso)</option>
+          <option value="escondida">Escondida (só a cor do boneco)</option>
+        </select>
+      </label>
+      <label class="marcar" for="camera">Câmera na luta:
+        <select id="camera">
+          <option value="perto">Perto (acompanha a luta)</option>
+          <option value="inteira">Arena inteira (parada)</option>
+        </select>
+      </label>
+      <label class="marcar"><input type="checkbox" id="cancelar"> Mover cancela o preparo</label>
+      <button id="padrao" type="button">Voltar aos valores iniciais</button>
+    </div>
+  </details>
+</main>
+
+<!-- three.js desenha as cenas 3D (precisa de internet na primeira vez). chao.js traz a imagem do piso da arena; sem ele, o piso vira lajes simples. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="chao.js"></script>
+<script>
+if (!window.THREE) {
+  const aviso = document.getElementById("erro3d"); aviso.hidden = false;
+  aviso.textContent = "Não foi possível carregar a parte 3D. Confira a internet e recarregue a página.";
+}
+// ===== Números do protótipo (metros e segundos) =====
+const PADRAO = {
+  // Personagem
+  velJogador: 5.5, vidaJogador: 5,
+  // Ataque básico (com alvo, não erra)
+  preparoAtaque: 0.25, recupAtaque: 0.20, alcance: 6, velProjetil: 20, danoAA: 2,
+  // Q: tiro mirado
+  preparoQ: 0.20, recupQ: 0.15, alcanceQ: 9, velQ: 24, larguraQ: 0.5, danoQ: 10, recargaQ: 5,
+  // W: tiro mirado que marca
+  preparoW: 0.25, recupW: 0.15, alcanceW: 8, velW: 18, larguraW: 0.6, danoW: 4, recargaW: 8,
+  duracaoMarca: 5, cargasMarca: 3, danoMarca: 15,
+  // E: avanço
+  distE: 4, velE: 25, recupE: 0.10, recargaE: 6,
+  // R: aparo
+  janelaAparo: 0.25, recupAparo: 0.5, recargaAparo: 12, atordoamento: 1.5,
+  // Mapa (modo viagem)
+  velViagem: 14, raioVisao: 12, raioDica: 26, raioEmboscada: 5,
+  // Poções
+  qtdPots: 3, curaPot: 2, preparoPot: 0.8,
+  // Horda
+  vidaMob: 4, velMob: 3.0, distMob: 7, preparoMob: 0.6, recupMob: 0.5, recargaMob: 3.0,
+  velBala: 7, alcanceBala: 14, raioBala: 0.25, aberturaLeque: 0.35,
+  raioZona: 1.8, avisoZona: 1.1,
+  // Mini-chefe (o boneco do kiting, com menos vida)
+  velBoneco: 4.0, vidaBoneco: 60, raioGolpe: 2.6, preparoGolpe: 0.70, recupGolpe: 0.90,
+  roscaNucleo: 1.4, roscaInterno: 3.0, roscaExterno: 5.0, preparoRosca: 0.90, velBonecoRosca: 2.0, recargaRosca: 3.0,
+  linhaDistMin: 5.5, linhaComprimento: 14, linhaLargura: 1.4, preparoLinha: 0.80, recargaLinha: 2.5,
+  modoAviso: "parcial", mostrarEm: 0.6,
+};
+const COR_GOLPE = { circulo: "#3d55e8", rosca: "#f0c419", linha: "#2fc46a" };
+const COR_MOB = { reto: "#e08a3c", area: "#d46a9f", leque: "#3cc4c4" };
+const COR_MARCA = "#c77dff";
+const AJUSTES = [
+  ["#", "Mapa (modo viagem)"],
+  ["velViagem", "Velocidade no mapa (m/s)", 4, 40, 1],
+  ["raioVisao", "Raio em que a névoa some (m)", 4, 40, 1],
+  ["raioDica", "Raio em que a dica (?) aparece (m)", 0, 80, 1],
+  ["raioEmboscada", "Raio que dispara a emboscada (m)", 1, 15, 0.5],
+  ["#", "Poções"],
+  ["qtdPots", "Poções ao descansar", 0, 10, 1],
+  ["curaPot", "Vida que cada poção recupera", 1, 10, 1],
+  ["preparoPot", "Tempo parado para beber na luta (s)", 0, 3, 0.05],
+  ["#", "Horda"],
+  ["vidaMob", "Vida do mob", 1, 40, 1],
+  ["velMob", "Velocidade do mob (m/s)", 0, 8, 0.1],
+  ["distMob", "Distância que o mob mantém (m)", 2, 14, 0.5],
+  ["preparoMob", "Mob: aviso antes do disparo (s)", 0.1, 2, 0.05],
+  ["recupMob", "Mob: recuperação (s)", 0, 2, 0.05],
+  ["recargaMob", "Mob: recarga do disparo (s)", 0.5, 10, 0.1],
+  ["velBala", "Disparo: velocidade (m/s)", 2, 20, 0.5],
+  ["alcanceBala", "Disparo: alcance (m)", 4, 30, 0.5],
+  ["raioBala", "Disparo: raio (m)", 0.1, 1, 0.05],
+  ["aberturaLeque", "Leque: abertura entre disparos (rad)", 0.1, 1, 0.05],
+  ["raioZona", "Área no chão: raio (m)", 0.5, 5, 0.1],
+  ["avisoZona", "Área no chão: aviso (s)", 0.3, 3, 0.05],
+  ["#", "Personagem e ataque básico"],
+  ["velJogador", "Velocidade do jogador (m/s)", 2, 10, 0.1],
+  ["vidaJogador", "Vida do jogador (golpes)", 1, 10, 1],
+  ["preparoAtaque", "Ataque básico: preparo (s)", 0, 0.8, 0.01],
+  ["recupAtaque", "Ataque básico: recuperação (s)", 0, 0.8, 0.01],
+  ["alcance", "Ataque básico: alcance (m)", 2, 14, 0.5],
+  ["velProjetil", "Ataque básico: velocidade do tiro (m/s)", 5, 40, 1],
+  ["danoAA", "Ataque básico: dano", 0, 20, 1],
+  ["#", "Q: tiro mirado"],
+  ["preparoQ", "Q: preparo (s)", 0, 0.8, 0.01],
+  ["recupQ", "Q: recuperação (s)", 0, 0.8, 0.01],
+  ["alcanceQ", "Q: alcance (m)", 2, 16, 0.5],
+  ["velQ", "Q: velocidade (m/s)", 5, 50, 1],
+  ["larguraQ", "Q: largura (m)", 0.1, 2, 0.05],
+  ["danoQ", "Q: dano", 0, 50, 1],
+  ["recargaQ", "Q: recarga (s)", 0, 20, 0.5],
+  ["#", "W: tiro que marca"],
+  ["preparoW", "W: preparo (s)", 0, 0.8, 0.01],
+  ["recupW", "W: recuperação (s)", 0, 0.8, 0.01],
+  ["alcanceW", "W: alcance (m)", 2, 16, 0.5],
+  ["velW", "W: velocidade (m/s)", 5, 50, 1],
+  ["larguraW", "W: largura (m)", 0.1, 2, 0.05],
+  ["danoW", "W: dano do tiro", 0, 50, 1],
+  ["recargaW", "W: recarga (s)", 0, 20, 0.5],
+  ["duracaoMarca", "Marca: duração (s)", 1, 15, 0.5],
+  ["cargasMarca", "Marca: ataques básicos para explodir", 1, 6, 1],
+  ["danoMarca", "Marca: dano da explosão", 0, 80, 1],
+  ["#", "E: avanço"],
+  ["distE", "E: distância (m)", 1, 10, 0.5],
+  ["velE", "E: velocidade (m/s)", 5, 60, 1],
+  ["recupE", "E: recuperação (s)", 0, 0.8, 0.01],
+  ["recargaE", "E: recarga (s)", 0, 20, 0.5],
+  ["#", "R: aparo"],
+  ["janelaAparo", "R: janela do aparo (s)", 0.05, 1, 0.01],
+  ["recupAparo", "R: recuperação se errar (s)", 0, 1.5, 0.05],
+  ["recargaAparo", "R: recarga (s)", 0, 30, 0.5],
+  ["atordoamento", "R: atordoamento de quem foi aparado (s)", 0, 4, 0.1],
+  ["#", "Mini-chefe e chefe (a vida de cada um está na lista de lugares, no código)"],
+  ["velBoneco", "Velocidade do mini-chefe (m/s)", 1, 9, 0.1],
+  ["raioGolpe", "Círculo: tamanho (m)", 1, 5, 0.1],
+  ["preparoGolpe", "Círculo: aviso (s)", 0.2, 1.5, 0.05],
+  ["recupGolpe", "Recuperação do mini-chefe (s)", 0, 2, 0.05],
+  ["roscaNucleo", "Saturno: raio do círculo central (m)", 0, 4, 0.1],
+  ["roscaInterno", "Saturno: início do anel (m)", 0.5, 6, 0.1],
+  ["roscaExterno", "Saturno: fim do anel (m)", 2, 9, 0.1],
+  ["preparoRosca", "Saturno: aviso (s)", 0.2, 2, 0.05],
+  ["velBonecoRosca", "Saturno: velocidade andando (m/s)", 0, 6, 0.1],
+  ["recargaRosca", "Saturno: recarga (s)", 0, 10, 0.5],
+  ["linhaDistMin", "Linha: usa a partir de (m)", 2, 14, 0.5],
+  ["linhaComprimento", "Linha: comprimento (m)", 4, 24, 0.5],
+  ["linhaLargura", "Linha: largura (m)", 0.4, 4, 0.1],
+  ["preparoLinha", "Linha: aviso (s)", 0.2, 2, 0.05],
+  ["recargaLinha", "Linha: recarga (s)", 0, 10, 0.5],
+  ["mostrarEm", "Modo parcial: área aparece em (fração do aviso)", 0, 1, 0.05],
+];
+const C = { ...PADRAO };
+const LARG = 24, ALT = 16;                          // arena em metros
+const RAIO_J = 0.45, RAIO_B = 0.9, RAIO_M = 0.45;   // tamanhos
+const DT = 1 / 60;                                  // passo fixo da simulação
+const BUFFER = 0.2;                                 // comando guardado enquanto ocupado (s)
+
+// ===== Estado =====
+let s, tentativas = 0;
+let mouse = { x: 0, y: 0 };
+function novoInimigo(tipo, x, y, vidaChefe) {
+  const chefe = tipo === "chefe", vida = chefe ? vidaChefe : C.vidaMob;
+  return { tipo, x, y, raio: chefe ? RAIO_B : RAIO_M, vida, vidaMax: vida,
+    estado: chefe ? "perseguir" : "andar", golpe: null, t: 0, flash: 0, golpeFlash: 0,
+    recRosca: 1.5, recLinha: 1.5, rec: 1 + Math.random() * C.recargaMob,
+    dx: 1, dy: 0, marca: 0, cargas: 0, explosao: 0 };
+}
+// Monta a luta de um lugar do mapa. sala = { chefe: vida (0 = sem chefe), reto, area, leque }
+function novoJogo(sala) {
+  tentativas += 1;
+  const inimigos = [];
+  if (sala.chefe) inimigos.push(novoInimigo("chefe", 19, ALT / 2, sala.chefe));
+  const tipos = [...Array(sala.reto).fill("reto"), ...Array(sala.area).fill("area"), ...Array(sala.leque).fill("leque")];
+  tipos.sort(() => Math.random() - 0.5);
+  tipos.forEach((tipo, i) => inimigos.push(novoInimigo(tipo, 13 + Math.random() * 9, 1.5 + (i + 0.5) / tipos.length * (ALT - 3))));
+  s = {
+    tempo: 0, fim: null,
+    j: { x: 4, y: ALT / 2, vida: mundo.vida, alvo: null, alvoAA: null, acao: null, flash: 0, perseguindo: false, rec: { q: 0, w: 0, e: 0, r: 0 }, olhar: 1, aparoFlash: 0 },
+    inimigos, tiros: [], balas: [], zonas: [], aaGuardado: 0, habGuardada: null, alvoGuardado: null,
+    acertos: 0, levados: 0, aparos: 0, usos: { aa: 0, q: 0, w: 0, e: 0, r: 0 },
+  };
+}
+
+const dist =(ax, ay, bx, by) => Math.hypot(ax - bx, ay - by);
+const limitar = (v, a, b) => Math.max(a, Math.min(b, v));
+const tempos = (tipo) => ({
+  p: [C.preparoPot, 0.1], aa: [C.preparoAtaque, C.recupAtaque], q: [C.preparoQ, C.recupQ], w: [C.preparoW, C.recupW], e: [0, C.recupE], r: [0, C.recupAparo],
+}[tipo]);
+const RECARGA = { q: () => C.recargaQ, w: () => C.recargaW, e: () => C.recargaE, r: () => C.recargaAparo };
+const HABS = ["q", "w", "e", "r"];
+const textoUsos = () => `AA ${s.usos.aa} · Q ${s.usos.q} · W ${s.usos.w} · E ${s.usos.e} · R ${s.usos.r}`;
+
+// ===== Mapa (modo viagem) =====
+// O mapa é maior que a tela: a câmera acompanha o personagem. Os lugares são dados.
+const MAPA_L = 200, MAPA_A = 140, CASA = 4, RAIO_LUGAR = 2.5; // metros; CASA é o quadrado da névoa
+const LUGARES = [
+  { id: "fogueira_inicio", nome: "Fogueira", tipo: "fogueira", x: 10, y: 50 },
+  { id: "emboscada_estrada", nome: "Emboscada", tipo: "emboscada", x: 44, y: 50, sala: { chefe: 0, reto: 2, area: 0, leque: 1 } },
+  { id: "ruina", nome: "Ruína", tipo: "dungeon", x: 66, y: 18, sala: { chefe: 60, reto: 2, area: 2, leque: 1 } },
+  { id: "bau_penhasco", nome: "Baú", tipo: "bau", x: 114, y: 14 },
+  { id: "fogueira_meio", nome: "Fogueira", tipo: "fogueira", x: 90, y: 70 },
+  { id: "emboscada_ponte", nome: "Emboscada", tipo: "emboscada", x: 98, y: 90, sala: { chefe: 0, reto: 1, area: 3, leque: 1 } },
+  { id: "fogueira_sul", nome: "Fogueira", tipo: "fogueira", x: 74, y: 110 },
+  { id: "bau_bosque", nome: "Baú", tipo: "bau", x: 18, y: 114 },
+  { id: "bau_ilha", nome: "Baú", tipo: "bau", x: 110, y: 134 },
+  { id: "emboscada_afluente", nome: "Emboscada", tipo: "emboscada", x: 130, y: 106, sala: { chefe: 0, reto: 3, area: 1, leque: 1 } },
+  { id: "cripta", nome: "Cripta", tipo: "dungeon", x: 170, y: 126, sala: { chefe: 60, reto: 3, area: 3, leque: 2 } },
+  { id: "guardiao", nome: "Guardião", tipo: "chefe", x: 182, y: 22, sala: { chefe: 120, reto: 0, area: 0, leque: 0 } },
+];
+// Relevo: cada letra é um quadrado de 4 m. "." chão, "#" montanha, "~" rio, "=" e "-" pontes. Só chão e ponte deixam passar.
+// As emboscadas ficam nas passagens estreitas (o passo da montanha, a primeira ponte e a ponte do afluente).
+const TERRENO = [
+  "..........##........................##............",
+  "..........##........................##............",
+  "..........##..............#####.....##............",
+  "..........##..............#.........##............",
+  "..........##..............#.........##............",
+  "...###....##..............#####.....##............",
+  "...###....##........................##............",
+  "..........##........................##............",
+  "..........##........................##...#########",
+  "..........##......###...............##............",
+  "..........##......###...............##............",
+  "..........##........................##............",
+  "....................................##............",
+  "..........##................##......##............",
+  "..........##................##......###########...",
+  "..........##................##......##............",
+  "..........##...##...................##............",
+  "..........##...##...................##............",
+  "..........##........................##............",
+  "..........##........................##............",
+  "..........##........................##............",
+  "..........##........................##............",
+  "############~~~~~~~~~~~~=~~~~~~~~~~~~~~~~=~~~~~~~~",
+  "..........##....................~.................",
+  "..........##....................~.................",
+  "..........##....................~.................",
+  "..........##....................-.................",
+  "..........##....................~.....###.........",
+  "..........##....................~.....###.........",
+  "..........##....................~.................",
+  "....................###.........~.................",
+  "..........##........###.........~.................",
+  "..........##....................~.................",
+  "..........##....................~.................",
+  "..........##....................~.................",
+];
+const NC = MAPA_L / CASA, NL = MAPA_A / CASA;
+const andavel = (cx, cy) => cx >= 0 && cy >= 0 && cx < NC && cy < NL && ".=-".includes(TERRENO[cy][cx]);
+const andavelEm = (x, y) => andavel(Math.floor(x / CASA), Math.floor(y / CASA));
+// Vai em linha reta até o ponto clicado. Não procura caminho: o relevo barra e achar a passagem é com o jogador.
+function irPara(x, y) {
+  const a = { x: limitar(x, 1, MAPA_L - 1), y: limitar(y, 1, MAPA_A - 1) };
+  mundo.caminho = [a]; mundo.alvo = a;
+}
+const parar = () => { mundo.caminho = []; mundo.alvo = null; direitoSegurado = false; };
+
+let modo = "mapa", mundo, lugarAtual = null, fade = 0;
+function revelar(x, y, r) {
+  for (let cx = Math.floor((x - r) / CASA); cx <= Math.floor((x + r) / CASA); cx++)
+    for (let cy = Math.floor((y - r) / CASA); cy <= Math.floor((y + r) / CASA); cy++)
+      if (Math.hypot((cx + 0.5) * CASA - x, (cy + 0.5) * CASA - y) <= r) mundo.nevoa.add(cx + "," + cy);
+}
+const revelado = (x, y) => mundo.nevoa.has(Math.floor(x / CASA) + "," + Math.floor(y / CASA));
+function avisar(t) { mundo.aviso = t; mundo.avisoT = 3; }
+function novoMundo() {
+  mundo = { x: 10, y: 54, alvo: null, caminho: [], vida: C.vidaJogador, pots: C.qtdPots, fogueira: "fogueira_inicio", nevoa: new Set(), estado: {},
+    mortes: 0, tempo: 0, tempoLuta: 0, aviso: "", avisoT: 0 };
+  for (const l of LUGARES) mundo.estado[l.id] = { visto: false, feito: false };
+  modo = "mapa"; lugarAtual = null; s = null;
+  revelar(mundo.x, mundo.y, C.raioVisao);
+}
+const lugarPerto = () => LUGARES.find(l => Math.hypot(mundo.x - l.x, mundo.y - l.y) < RAIO_LUGAR);
+function entrar(l) { lugarAtual = l; parar(); novoJogo(l.sala); modo = "luta"; fade = 0.35; }
+// Descansar: vida e poções cheias, a fogueira vira o ponto de retorno e as emboscadas voltam a valer
+function descansar(l, texto) {
+  mundo.fogueira = l.id; mundo.vida = C.vidaJogador; mundo.pots = C.qtdPots;
+  for (const e of LUGARES) if (e.tipo === "emboscada") mundo.estado[e.id].feito = false;
+  avisar(texto);
+}
+function comandoPocao() {
+  if (mundo.pots <= 0) return;
+  if (modo === "mapa") {
+    if (mundo.vida >= C.vidaJogador) return;
+    mundo.pots -= 1; mundo.vida = Math.min(C.vidaJogador, mundo.vida + C.curaPot); avisar("Poção usada");
+    return;
+  }
+  // na luta, beber prende o personagem pelo tempo de preparo; a poção só é gasta se o preparo terminar
+  const j = s.j;
+  if (s.fim || j.acao || j.vida >= C.vidaJogador) return;
+  j.acao = { tipo: "p", fase: "preparo", t: 0, dx: j.olhar, dy: 0 };
+  j.alvo = null; j.perseguindo = false; s.alvoGuardado = null;
+}
+function sairDaLuta() {
+  const l = lugarAtual;
+  if (s.fim === "venceu") {
+    mundo.estado[l.id].feito = true; mundo.vida = s.j.vida;
+    revelar(l.x, l.y, C.raioVisao * 2.5); // vencer um lugar dissipa a névoa em volta
+    avisar(`${l.nome}: vencido`);
+  } else {
+    const f = LUGARES.find(x => x.id === mundo.fogueira);
+    mundo.mortes += 1; mundo.x = f.x; mundo.y = f.y + 4;
+    descansar(f, "Você voltou à última fogueira");
+  }
+  parar(); modo = "mapa"; lugarAtual = null; s = null; fade = 0.35;
+}
+function passoMapa() {
+  mundo.tempo += DT; mundo.avisoT = Math.max(0, mundo.avisoT - DT);
+  if (mundo.caminho.length) {
+    const a = mundo.caminho[0], dx = a.x - mundo.x, dy = a.y - mundo.y, d = Math.hypot(dx, dy), p = C.velViagem * DT;
+    const px = d <= p ? dx : dx / d * p, py = d <= p ? dy : dy / d * p;
+    // bateu no relevo: escorrega ao longo da parede; se não sobra para onde ir, para
+    if (andavelEm(mundo.x + px, mundo.y + py)) { mundo.x += px; mundo.y += py; }
+    else if (Math.abs(px) > 0.01 && andavelEm(mundo.x + px, mundo.y)) mundo.x += px;
+    else if (Math.abs(py) > 0.01 && andavelEm(mundo.x, mundo.y + py)) mundo.y += py;
+    else { mundo.caminho = []; mundo.alvo = null; }
+    if (d <= p && mundo.caminho.length && mundo.x === a.x && mundo.y === a.y) { mundo.caminho = []; mundo.alvo = null; }
+  }
+  mundo.x = limitar(mundo.x, 1, MAPA_L - 1); mundo.y = limitar(mundo.y, 1, MAPA_A - 1);
+  revelar(mundo.x, mundo.y, C.raioVisao);
+  for (const l of LUGARES) {
+    const e = mundo.estado[l.id], d = Math.hypot(mundo.x - l.x, mundo.y - l.y);
+    if (l.tipo !== "emboscada" && revelado(l.x, l.y)) e.visto = true;
+    if (!e.feito) {
+      if (l.tipo === "bau" && d < RAIO_LUGAR) { e.feito = true; avisar("Baú aberto"); }
+      else if (l.tipo === "emboscada" && d < C.raioEmboscada) { e.visto = true; entrar(l); return; }
+    }
+  }
+}
+
+// Inimigo vivo mais perto do mouse: é o alvo do ataque básico
+function alvoDoMouse() {
+  let melhor = null, md = Infinity;
+  for (const i of s.inimigos) { const d = dist(mouse.x, mouse.y, i.x, i.y) - i.raio; if (d < md) { md = d; melhor = i; } }
+  return melhor;
+}
+
+// ===== Comandos vindos do mouse e do teclado =====
+function comandoMover(x, y) {
+  const j = s.j;
+  j.perseguindo = false;
+  if (j.acao) {
+    if (j.acao.fase === "preparo" && document.getElementById("cancelar").checked) { j.acao = null; j.alvo = { x, y }; }
+    else s.alvoGuardado = { x, y };
+    return;
+  }
+  j.alvo = { x, y };
+}
+function comandoParar() {
+  const j = s.j;
+  j.alvo = null; j.perseguindo = false; s.alvoGuardado = null; s.aaGuardado = 0; s.habGuardada = null; direitoSegurado = false;
+}
+function comandoAtacar() {
+  const j = s.j;
+  if (j.acao) { s.aaGuardado = BUFFER; return; }
+  const a = alvoDoMouse(); if (!a) return;
+  j.alvoAA = a;
+  if (dist(j.x, j.y, a.x, a.y) - a.raio <= C.alcance) iniciarAA();
+  else { j.perseguindo = true; j.alvo = null; } // anda até ficar no alcance
+}
+function iniciarAA() {
+  const j = s.j, b = j.alvoAA;
+  const d = dist(j.x, j.y, b.x, b.y) || 1;
+  j.acao = { tipo: "aa", fase: "preparo", t: 0, dx: (b.x - j.x) / d, dy: (b.y - j.y) / d, alvo: b };
+  j.alvo = null; j.perseguindo = false; s.alvoGuardado = null;
+}
+function comandoHabilidade(tipo, x, y) {
+  const j = s.j;
+  if (j.rec[tipo] > 0) return;
+  if (j.acao) {
+    const podeCortar = j.acao.tipo === "aa" && j.acao.fase === "recuperacao";
+    if (!podeCortar) { s.habGuardada = { tipo, x, y, t: 0.4 }; return; }
+  }
+  const dx = x - j.x, dy = y - j.y, d = Math.hypot(dx, dy) || 1;
+  j.acao = { tipo, fase: tipo === "e" || tipo === "r" ? "ativo" : "preparo", t: 0, dx: dx / d, dy: dy / d };
+  j.rec[tipo] = RECARGA[tipo]();
+  s.usos[tipo] += 1;
+  j.alvo = null; j.perseguindo = false; s.alvoGuardado = null; s.habGuardada = null;
+}
+function disparar(a) {
+  const j = s.j, ox = j.x + a.dx * RAIO_J, oy = j.y + a.dy * RAIO_J;
+  if (a.tipo === "p") { mundo.pots -= 1; j.vida = Math.min(C.vidaJogador, j.vida + C.curaPot); }
+  else if (a.tipo === "aa") { s.tiros.push({ tipo: "aa", x: ox, y: oy, alvo: a.alvo }); s.usos.aa += 1; }
+  else if (a.tipo === "q") s.tiros.push({ tipo: "q", x: ox, y: oy, dx: a.dx, dy: a.dy, percorrido: 0, alcance: C.alcanceQ, vel: C.velQ, raio: C.larguraQ / 2 });
+  else if (a.tipo === "w") s.tiros.push({ tipo: "w", x: ox, y: oy, dx: a.dx, dy: a.dy, percorrido: 0, alcance: C.alcanceW, vel: C.velW, raio: C.larguraW / 2 });
+}
+function processarFila() {
+  const j = s.j;
+  if (s.habGuardada) { const h = s.habGuardada; s.habGuardada = null; comandoHabilidade(h.tipo, h.x, h.y); }
+  else if (s.aaGuardado > 0) { s.aaGuardado = 0; comandoAtacar(); }
+  else if (s.alvoGuardado) { j.alvo = s.alvoGuardado; s.alvoGuardado = null; }
+}
+
+// ===== Simulação (60 passos por segundo) =====
+function causarDano(i, n) { i.vida -= n; i.flash = 0.12; s.acertos += 1; }
+
+// Um golpe ou disparo chegou no jogador. Devolve true se foi aparado.
+function atingirJogador(dono) {
+  const j = s.j;
+  if (j.acao && j.acao.tipo === "r" && j.acao.fase === "ativo") {
+    // aparo certo: anulado, jogador livre na hora, quem atacou fica atordoado
+    j.acao = null; j.aparoFlash = 0.4; s.aparos += 1;
+    if (dono && dono.vida > 0) { dono.estado = "atordoado"; dono.t = 0; dono.golpe = null; }
+    return true;
+  }
+  j.vida -= 1; s.levados += 1; j.flash = 0.3;
+  return false;
+}
+
+function passoChefe(b) {
+  const j = s.j;
+  const dJB = dist(j.x, j.y, b.x, b.y) || 0.001;
+  b.recRosca = Math.max(0, b.recRosca - DT); b.recLinha = Math.max(0, b.recLinha - DT);
+  const andarAte = (vel) => { const p = vel * DT; b.x += (j.x - b.x) / dJB * p; b.y += (j.y - b.y) / dJB * p; };
+  if (b.estado === "perseguir") {
+    const comecar = (golpe) => { b.estado = "preparo"; b.golpe = golpe; b.t = 0; };
+    if (dJB <= C.raioGolpe * 0.75) comecar("circulo");
+    else if (b.recRosca <= 0 && dJB < C.roscaExterno * 0.9) { comecar("rosca"); b.recRosca = C.recargaRosca; }
+    else if (b.recLinha <= 0 && dJB >= C.linhaDistMin) {
+      comecar("linha"); b.recLinha = C.recargaLinha;
+      b.dx = (j.x - b.x) / dJB; b.dy = (j.y - b.y) / dJB;
+    }
+    else andarAte(C.velBoneco);
+    return;
+  }
+  b.t += DT;
+  if (b.estado === "preparo") {
+    const aviso = { circulo: C.preparoGolpe, rosca: C.preparoRosca, linha: C.preparoLinha }[b.golpe];
+    if (b.golpe === "rosca") andarAte(C.velBonecoRosca);
+    if (b.t >= aviso) {
+      b.golpeFlash = 0.3; b.golpeVisto = b.golpe;
+      const d = dist(j.x, j.y, b.x, b.y);
+      let acertou = false;
+      if (b.golpe === "circulo") acertou = d < C.raioGolpe + RAIO_J;
+      else if (b.golpe === "rosca") acertou = d - RAIO_J < C.roscaNucleo || (d + RAIO_J > C.roscaInterno && d - RAIO_J < C.roscaExterno);
+      else {
+        const px = j.x - b.x, py = j.y - b.y;
+        const ao_longo = limitar(px * b.dx + py * b.dy, 0, C.linhaComprimento);
+        acertou = dist(j.x, j.y, b.x + b.dx * ao_longo, b.y + b.dy * ao_longo) < C.linhaLargura / 2 + RAIO_J;
+      }
+      if (!(acertou && atingirJogador(b))) { b.estado = "recuperacao"; b.t = 0; }
+    }
+  } else if (b.estado === "recuperacao" && b.t >= C.recupGolpe) { b.estado = "perseguir"; b.golpe = null; b.t = 0; }
+  else if (b.estado === "atordoado" && b.t >= C.atordoamento) { b.estado = "perseguir"; b.golpe = null; b.t = 0; }
+}
+
+function passoMob(m) {
+  const j = s.j;
+  const d = dist(j.x, j.y, m.x, m.y) || 0.001;
+  m.rec = Math.max(0, m.rec - DT);
+  if (m.estado === "andar") {
+    if (d > C.distMob) { const p = C.velMob * DT; m.x += (j.x - m.x) / d * p; m.y += (j.y - m.y) / d * p; }
+    if (m.rec <= 0 && d <= C.distMob + 2) {
+      // mira travada onde o jogador está quando o aviso começa
+      m.estado = "preparo"; m.t = 0; m.dx = (j.x - m.x) / d; m.dy = (j.y - m.y) / d;
+    }
+    return;
+  }
+  m.t += DT;
+  if (m.estado === "preparo" && m.t >= C.preparoMob) {
+    const bala = (ang) => {
+      const c = Math.cos(ang), sn = Math.sin(ang), dx = m.dx * c - m.dy * sn, dy = m.dx * sn + m.dy * c;
+      s.balas.push({ x: m.x + dx * m.raio, y: m.y + dy * m.raio, dx, dy, percorrido: 0, dono: m });
+    };
+    if (m.tipo === "reto") bala(0);
+    else if (m.tipo === "leque") { bala(-C.aberturaLeque); bala(0); bala(C.aberturaLeque); }
+    else s.zonas.push({ x: j.x, y: j.y, t: 0, flash: 0, estourou: false, dono: m }); // área onde o jogador está agora
+    m.estado = "recuperacao"; m.t = 0;
+  }
+  else if (m.estado === "recuperacao" && m.t >= C.recupMob) { m.estado = "andar"; m.rec = C.recargaMob * (0.8 + Math.random() * 0.4); }
+  else if (m.estado === "atordoado" && m.t >= C.atordoamento) { m.estado = "andar"; m.rec = C.recargaMob * 0.5; }
+}
+
+function passo() {
+  if (modo === "mapa") { passoMapa(); return; }
+  if (s.fim) return;
+  s.tempo += DT; mundo.tempoLuta += DT;
+  const j = s.j;
+
+  // Recargas e comandos guardados
+  for (const k of HABS) j.rec[k] = Math.max(0, j.rec[k] - DT);
+  s.aaGuardado = Math.max(0, s.aaGuardado - DT);
+  if (s.habGuardada) { s.habGuardada.t -= DT; if (s.habGuardada.t <= 0) s.habGuardada = null; }
+  if (s.habGuardada && j.acao && j.acao.tipo === "aa" && j.acao.fase === "recuperacao") {
+    const h = s.habGuardada; s.habGuardada = null; comandoHabilidade(h.tipo, h.x, h.y);
+  }
+  // O alvo do ataque básico morreu: desiste do preparo ou da perseguição
+  if (j.acao && j.acao.tipo === "aa" && j.acao.fase === "preparo" && j.acao.alvo.vida <= 0) { j.acao = null; processarFila(); }
+  if (j.perseguindo && (!j.alvoAA || j.alvoAA.vida <= 0)) j.perseguindo = false;
+
+  // Jogador
+  if (j.acao) {
+    const a = j.acao, [prep, recup] = tempos(a.tipo);
+    a.t += DT;
+    if (a.fase === "preparo" && a.t >= prep) { disparar(a); a.fase = "recuperacao"; a.t = 0; }
+    else if (a.fase === "ativo" && a.tipo === "e") {
+      const p = C.velE * DT; j.x += a.dx * p; j.y += a.dy * p;
+      if (a.t >= C.distE / C.velE) { a.fase = "recuperacao"; a.t = 0; }
+    }
+    else if (a.fase === "ativo" && a.tipo === "r" && a.t >= C.janelaAparo) { a.fase = "recuperacao"; a.t = 0; }
+    else if (a.fase === "recuperacao" && a.t >= recup) { j.acao = null; processarFila(); }
+    if (j.acao && j.acao.tipo !== "r") j.olhar = j.acao.dx >= 0 ? 1 : -1;
+    j.andando = false;
+  } else if (j.perseguindo) {
+    const b = j.alvoAA, d = dist(j.x, j.y, b.x, b.y) || 0.001;
+    if (d - b.raio <= C.alcance) iniciarAA();
+    else { const p = C.velJogador * DT; j.x += (b.x - j.x) / d * p; j.y += (b.y - j.y) / d * p; j.olhar = b.x >= j.x ? 1 : -1; j.andando = true; }
+  } else if (j.alvo) {
+    const dx = j.alvo.x - j.x, dy = j.alvo.y - j.y, d = Math.hypot(dx, dy), p = C.velJogador * DT;
+    if (d <= p) { j.x = j.alvo.x; j.y = j.alvo.y; j.alvo = null; }
+    else { j.x += dx / d * p; j.y += dy / d * p; }
+    if (Math.abs(dx) > 0.01) j.olhar = dx >= 0 ? 1 : -1;
+    j.andando = true;
+  } else j.andando = false;
+
+  // Inimigos
+  for (const i of s.inimigos) {
+    if (i.marca > 0) { i.marca = Math.max(0, i.marca - DT); if (i.marca === 0) i.cargas = 0; }
+    i.flash = Math.max(0, i.flash - DT); i.golpeFlash = Math.max(0, i.golpeFlash - DT); i.explosao = Math.max(0, i.explosao - DT);
+    if (i.tipo === "chefe") passoChefe(i); else passoMob(i);
+  }
+
+  // Disparos dos mobs
+  for (const t of s.balas) {
+    const p = C.velBala * DT;
+    t.x += t.dx * p; t.y += t.dy * p; t.percorrido += p;
+    if (dist(t.x, t.y, j.x, j.y) < C.raioBala + RAIO_J) { t.morto = true; atingirJogador(t.dono); }
+    else if (t.percorrido >= C.alcanceBala || t.x < -1 || t.y < -1 || t.x > LARG + 1 || t.y > ALT + 1) t.morto = true;
+  }
+  s.balas = s.balas.filter(t => !t.morto);
+
+  // Áreas no chão
+  for (const z of s.zonas) {
+    z.t += DT;
+    if (!z.estourou && z.t >= C.avisoZona) {
+      z.estourou = true; z.flash = 0.3;
+      if (dist(z.x, z.y, j.x, j.y) < C.raioZona + RAIO_J) atingirJogador(z.dono);
+    } else if (z.estourou) z.flash -= DT;
+  }
+  s.zonas = s.zonas.filter(z => !z.estourou || z.flash > 0);
+
+  // Corpos não se atravessam
+  for (const i of s.inimigos) {
+    const d = dist(j.x, j.y, i.x, i.y), min = RAIO_J + i.raio;
+    if (d < min && d > 0) { const e = min - d; j.x += (j.x - i.x) / d * e; j.y += (j.y - i.y) / d * e; }
+  }
+  for (let a = 0; a < s.inimigos.length; a++) for (let b = a + 1; b < s.inimigos.length; b++) {
+    const p = s.inimigos[a], q = s.inimigos[b], d = dist(p.x, p.y, q.x, q.y), min = p.raio + q.raio;
+    if (d < min && d > 0) { const e = (min - d) / 2, ux = (p.x - q.x) / d, uy = (p.y - q.y) / d; p.x += ux * e; p.y += uy * e; q.x -= ux * e; q.y -= uy * e; }
+  }
+  j.x = limitar(j.x, RAIO_J, LARG - RAIO_J); j.y = limitar(j.y, RAIO_J, ALT - RAIO_J);
+  for (const i of s.inimigos) { i.x = limitar(i.x, i.raio, LARG - i.raio); i.y = limitar(i.y, i.raio, ALT - i.raio); }
+
+  // Tiros do jogador
+  for (const t of s.tiros) {
+    if (t.tipo === "aa") {
+      // segue o alvo: o ataque básico não erra
+      const b = t.alvo;
+      if (b.vida <= 0) { t.morto = true; continue; }
+      const d = dist(t.x, t.y, b.x, b.y) || 0.001, p = C.velProjetil * DT;
+      t.x += (b.x - t.x) / d * p; t.y += (b.y - t.y) / d * p;
+      if (d < b.raio + 0.15 + p) {
+        t.morto = true; causarDano(b, C.danoAA);
+        if (b.marca > 0) {
+          b.cargas += 1;
+          if (b.cargas >= C.cargasMarca) { causarDano(b, C.danoMarca); b.marca = 0; b.cargas = 0; b.explosao = 0.35; }
+        }
+      }
+    } else {
+      const p = t.vel * DT;
+      t.x += t.dx * p; t.y += t.dy * p; t.percorrido += p;
+      const b = s.inimigos.find(i => i.vida > 0 && dist(t.x, t.y, i.x, i.y) < i.raio + t.raio);
+      if (b) {
+        t.morto = true;
+        if (t.tipo === "q") causarDano(b, C.danoQ);
+        else { causarDano(b, C.danoW); b.marca = C.duracaoMarca; b.cargas = 0; }
+      }
+      else if (t.percorrido >= t.alcance) t.morto = true;
+    }
+  }
+  s.tiros = s.tiros.filter(t => !t.morto);
+
+  j.flash = Math.max(0, j.flash - DT); j.aparoFlash = Math.max(0, j.aparoFlash - DT);
+  s.inimigos = s.inimigos.filter(i => i.vida > 0);
+  if (j.vida <= 0) s.fim = "perdeu";
+  else if (!s.inimigos.length) s.fim = "venceu";
+}
+
+// ===== Desenho em 3D (three.js) =====
+// As regras acima não mudaram. Aqui o mundo (x, y em metros) vira uma cena 3D: x fica igual, y vira a profundidade (z)
+// e a altura é nova. São duas cenas: o mapa (modo viagem) e a arena das lutas. Em cada uma há três camadas:
+// a cena 3D (tela3d), desenhos planos colados no chão (áreas de golpe, mira, névoa) e um desenho por cima de tudo
+// (barras de vida, recargas, textos).
+const tela = document.getElementById("tela"), hud = tela.getContext("2d");
+const tela3d = document.getElementById("tela3d");
+const VL = 960, VA = 640; // tamanho lógico do desenho por cima
+hud.scale(tela.width / VL, tela.height / VA);
+const cor = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const CORES = { arena: cor("--arena"), grade: cor("--grade"), texto: cor("--texto"), fraco: cor("--texto-fraco"), jog: cor("--jogador"), perigo: cor("--perigo"), prep: cor("--preparo") };
+const FONTE = cor("--fonte");
+
+const cor3 = hex => new THREE.Color(hex).convertSRGBToLinear();
+const mat = (hex, o = {}) => new THREE.MeshStandardMaterial({ color: cor3(hex), roughness: 0.85, metalness: 0, ...o });
+const matLuz = (hex, o = {}) => new THREE.MeshBasicMaterial({ color: cor3(hex), ...o });
+const matBrilho = (hex, opacidade) => new THREE.MeshBasicMaterial({ color: cor3(hex), transparent: true, opacity: opacidade, depthWrite: false, blending: THREE.AdditiveBlending });
+function malha(geo, material, x, y, z, pai) {
+  const m = new THREE.Mesh(geo, material); m.position.set(x, y, z); m.castShadow = true; m.receiveShadow = true;
+  if (pai) pai.add(m); return m;
+}
+// números "sorteados" que saem sempre iguais, para o cenário não mudar a cada vez
+function sorteio(semente) { let a = semente; return () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+const PRETO = new THREE.Color(0, 0, 0), BRANCO = new THREE.Color(1, 1, 1);
+
+const renderizador = new THREE.WebGLRenderer({ canvas: tela3d, antialias: true });
+renderizador.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderizador.setSize(VL, VA, false);
+renderizador.outputEncoding = THREE.sRGBEncoding;
+renderizador.toneMapping = THREE.ACESFilmicToneMapping;
+renderizador.shadowMap.enabled = true;
+renderizador.shadowMap.type = THREE.PCFSoftShadowMap;
+const cenaLuta = new THREE.Scene(), cenaMapa = new THREE.Scene();
+cenaLuta.background = cor3("#090b10"); cenaMapa.background = cor3("#0b0e14");
+
+// ----- Câmera: alta, em perspectiva. No mapa acompanha o personagem de longe; na luta, de perto ou parada (painel). -----
+const camera = new THREE.PerspectiveCamera(30, VL / VA, 1, 700);
+const GRAU = Math.PI / 180;
+const CAM = { modoLuta: "perto", distPerto: 27, distInteira: 44, inclLuta: 50 * GRAU, distMapa: 100, inclMapa: 52 * GRAU,
+  foco: new THREE.Vector3(), dist: 100, incl: 52 * GRAU, cenaAnterior: null };
+(function medirArenaInteira() {
+  const foco = new THREE.Vector3(LARG / 2, 0, ALT / 2 + 0.7), v = new THREE.Vector3();
+  const pontos = [[0, 0, 0], [LARG, 0, 0], [0, 0, ALT], [LARG, 0, ALT], [0, 2.8, 0], [LARG, 2.8, 0]];
+  for (let d = 15; d < 90; d += 0.25) {
+    camera.position.set(foco.x, Math.sin(CAM.inclLuta) * d, foco.z + Math.cos(CAM.inclLuta) * d);
+    camera.lookAt(foco); camera.updateMatrixWorld();
+    CAM.distInteira = d;
+    if (pontos.every(p => { v.set(p[0], p[1], p[2]).project(camera); return Math.abs(v.x) < 0.95 && Math.abs(v.y) < 0.93; })) break;
+  }
+})();
+const focoAlvo = new THREE.Vector3();
+function moverCamera() {
+  let distAlvo, incl;
+  if (modo === "mapa") { focoAlvo.set(mundo.x, 0, mundo.y + 4); distAlvo = CAM.distMapa; incl = CAM.inclMapa; }
+  else {
+    incl = CAM.inclLuta;
+    if (CAM.modoLuta === "inteira") { focoAlvo.set(LARG / 2, 0, ALT / 2 + 0.7); distAlvo = CAM.distInteira; }
+    else {
+      // olha para o jogador, puxando um pouco na direção do meio dos inimigos
+      const j = s.j; let mx = 0, my = 0;
+      for (const i of s.inimigos) { mx += i.x - j.x; my += i.y - j.y; }
+      const n = s.inimigos.length || 1; let dx = mx / n * 0.4, dy = my / n * 0.4; const d = Math.hypot(dx, dy), max = 3.5;
+      if (d > max) { dx *= max / d; dy *= max / d; }
+      focoAlvo.set(j.x + dx, 0, j.y + dy + 0.5); distAlvo = CAM.distPerto;
+    }
+  }
+  const naHora = CAM.cenaAnterior !== modo, q = naHora ? 1 : 0.08; CAM.cenaAnterior = modo;
+  CAM.foco.lerp(focoAlvo, q); CAM.dist += (distAlvo - CAM.dist) * q; CAM.incl = incl;
+  camera.position.set(CAM.foco.x, Math.sin(incl) * CAM.dist, CAM.foco.z + Math.cos(incl) * CAM.dist);
+  camera.lookAt(CAM.foco); camera.updateMatrixWorld();
+}
+const vTela = new THREE.Vector3();
+function naTela(x, altura, y) { // ponto do mundo -> posição no desenho por cima
+  vTela.set(x, altura, y).project(camera);
+  return { x: (vTela.x + 1) / 2 * VL, y: (1 - vTela.y) / 2 * VA };
+}
+function girarPara(atual, alvo, quanto) { // gira aos poucos pelo caminho mais curto
+  let d = alvo - atual; while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2;
+  return atual + d * quanto;
+}
+
+// ===== Modelos (formas simples; a frente de todos é o eixo +X) =====
+// Jogador: atirador de capuz azul-claro com besta de mão
+function criarJogador(cenaAlvo) {
+  const raiz = new THREE.Group(), corpo = new THREE.Group(); raiz.add(corpo); cenaAlvo.add(raiz);
+  const azul = mat("#8ec6ee", { roughness: 0.75 }), couro = mat("#3b455c"), escuro = mat("#262b38"), pele = mat("#dcab86"),
+    madeira = mat("#7a5433"), metal = mat("#aab4c4", { roughness: 0.35, metalness: 0.7 });
+  const pernas = [-1, 1].map(lado => {
+    const p = new THREE.Group(); p.position.set(0, 0.64, lado * 0.11); corpo.add(p);
+    malha(new THREE.CylinderGeometry(0.09, 0.075, 0.6, 10), escuro, 0, -0.3, 0, p);
+    malha(new THREE.BoxGeometry(0.24, 0.12, 0.15), madeira, 0.04, -0.58, 0, p);
+    return p;
+  });
+  const tronco = new THREE.Group(); corpo.add(tronco);
+  malha(new THREE.CylinderGeometry(0.2, 0.25, 0.56, 12), couro, 0, 0.94, 0, tronco);
+  malha(new THREE.CylinderGeometry(0.25, 0.36, 0.34, 12), azul, 0, 0.62, 0, tronco);
+  malha(new THREE.CylinderGeometry(0.265, 0.265, 0.07, 12), madeira, 0, 0.78, 0, tronco);
+  malha(new THREE.CylinderGeometry(0.15, 0.31, 0.2, 12), azul, 0, 1.2, 0, tronco);
+  malha(new THREE.SphereGeometry(0.2, 16, 12), azul, -0.02, 1.41, 0, tronco);
+  malha(new THREE.SphereGeometry(0.125, 12, 10), pele, 0.095, 1.37, 0, tronco);
+  const ponta = malha(new THREE.ConeGeometry(0.12, 0.3, 10), azul, -0.2, 1.42, 0, tronco); ponta.rotation.z = Math.PI / 2 + 0.35;
+  const aljava = malha(new THREE.CylinderGeometry(0.07, 0.06, 0.5, 8), madeira, -0.27, 1.0, 0.08, tronco); aljava.rotation.set(0.3, 0, 0.35);
+  const capa = new THREE.Group(); capa.position.set(-0.02, 1.24, 0); tronco.add(capa);
+  const matPano = azul.clone(); matPano.side = THREE.DoubleSide;
+  malha(new THREE.CylinderGeometry(0.27, 0.44, 0.9, 14, 1, true, Math.PI * 1.5 - 1.15, 2.3), matPano, 0, -0.45, 0, capa);
+  const besta = new THREE.Group(); besta.position.set(0.1, 1.06, 0); tronco.add(besta);
+  for (const lado of [-1, 1]) {
+    const braco = malha(new THREE.CylinderGeometry(0.06, 0.055, 0.42, 8), couro, 0.16, 0.0, lado * 0.17, besta);
+    braco.rotation.set(0, lado * 0.35, -Math.PI / 2);
+    const arcoB = malha(new THREE.BoxGeometry(0.05, 0.04, 0.3), metal, 0.62, 0, lado * 0.14, besta); arcoB.rotation.y = lado * 0.3;
+  }
+  malha(new THREE.BoxGeometry(0.56, 0.06, 0.07), madeira, 0.42, 0, 0, besta);
+  const virote = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.42, 6), matLuz("#ffd166"));
+  virote.rotation.z = -Math.PI / 2; virote.position.set(0.5, 0.05, 0); besta.add(virote);
+  const escudo = new THREE.Mesh(new THREE.SphereGeometry(0.85, 24, 16), matBrilho("#9be7ff", 0.3));
+  escudo.position.y = 0.85; escudo.visible = false; raiz.add(escudo);
+  return { raiz, corpo, tronco, pernas, capa, besta, virote, escudo, mats: [azul, couro, escuro, pele, madeira, metal, matPano], angulo: 0, coice: 0 };
+}
+// e = { x, y, dir (ângulo ou null), andando, avancando, puxar (0 a 1), virote, aparando, aparoT, disparou, dor, cura, T }
+function animarJogador(r, e) {
+  if (e.dir !== null) r.angulo = girarPara(r.angulo, e.dir, e.giro);
+  if (e.disparou) r.coice = 1;
+  r.coice *= 0.8;
+  r.raiz.position.set(e.x, 0, e.y); r.raiz.rotation.y = -r.angulo;
+  const passada = Math.sin(e.T * 13);
+  r.pernas[0].rotation.z = e.andando ? passada * 0.7 : e.avancando ? 0.9 : 0;
+  r.pernas[1].rotation.z = e.andando ? -passada * 0.7 : e.avancando ? -0.5 : 0;
+  r.tronco.position.y = e.andando ? Math.abs(Math.cos(e.T * 13)) * 0.05 : Math.sin(e.T * 2.2) * 0.012;
+  r.corpo.rotation.z = e.avancando ? -0.5 : e.andando ? -0.1 : e.aparando ? 0.12 : 0;
+  r.capa.rotation.z = e.avancando ? -1.0 : e.andando ? -0.3 + passada * 0.06 : -0.04;
+  r.besta.position.x = 0.1 - e.puxar * 0.07 - r.coice * 0.14;
+  r.besta.rotation.z = (e.andando ? -0.35 : 0) + r.coice * 0.3;
+  r.virote.visible = e.virote;
+  r.escudo.visible = e.aparando;
+  if (e.aparando) { const p = 1 + Math.sin(e.aparoT * 40) * 0.05; r.escudo.scale.set(p, p, p); }
+  // vermelho quando leva golpe, verde enquanto bebe a poção
+  for (const m of r.mats) m.emissive.setRGB(e.dor * 0.9, e.dor * 0.12 + e.cura * 0.35, e.dor * 0.1 + e.cura * 0.1);
+}
+
+// Chefe e mini-chefe: golem de barro rachado, amarrado a duas estacas. O corpo inteiro troca de cor no aviso.
+const COR_BARRO = { normal: cor3("#b5673f"), recuperacao: cor3("#5c3826"), atordoado: cor3("#8a8794"),
+  circulo: cor3(COR_GOLPE.circulo), rosca: cor3(COR_GOLPE.rosca), linha: cor3(COR_GOLPE.linha) };
+function criarGolem(cenaAlvo, naLuta) {
+  const raiz = new THREE.Group(), corpo = new THREE.Group(); raiz.add(corpo); cenaAlvo.add(raiz);
+  const barro = new THREE.MeshStandardMaterial({ color: cor3("#b5673f"), roughness: 1, flatShading: true });
+  const madeira = mat("#6b4a2e", { flatShading: true }), corda = mat("#bfa272"), olhos = matLuz("#1a1210");
+  const tronco = malha(new THREE.IcosahedronGeometry(0.95, 1), barro, 0, 1.0, 0, corpo); tronco.scale.set(1, 1.05, 1);
+  malha(new THREE.IcosahedronGeometry(0.45, 1), barro, 0.05, 2.08, 0, corpo);
+  for (const lado of [-1, 1]) {
+    malha(new THREE.IcosahedronGeometry(0.42, 0), barro, 0.05, 1.5, lado * 0.72, corpo);
+    malha(new THREE.IcosahedronGeometry(0.36, 0), barro, 0.25, 0.42, lado * 0.5, corpo);
+    const estaca = malha(new THREE.CylinderGeometry(0.13, 0.15, 1.9, 7), madeira, -0.15, 0.95, lado * 1.02, corpo); estaca.rotation.x = lado * -0.08;
+    malha(new THREE.ConeGeometry(0.13, 0.3, 7), madeira, -0.15, 2.04, lado * 1.1, corpo);
+    const olho = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), olhos); olho.position.set(0.44, 2.14, lado * 0.16); corpo.add(olho);
+  }
+  for (const [y, r] of [[0.85, 1.0], [1.2, 0.99]]) {
+    const volta = malha(new THREE.TorusGeometry(r, 0.045, 6, 28), corda, 0, y, 0, corpo); volta.rotation.x = Math.PI / 2; volta.scale.set(1, 1.08, 1);
+  }
+  const rig = { raiz, corpo, barro, olhos, angulo: Math.PI, corAlvo: new THREE.Color(), brilho: new THREE.Color() };
+  if (naLuta) {
+    rig.estrelas = new THREE.Group(); rig.estrelas.position.y = 2.9; raiz.add(rig.estrelas);
+    const matEstrela = matLuz("#f4f1ff");
+    for (let i = 0; i < 3; i++) { const e = new THREE.Mesh(new THREE.OctahedronGeometry(0.14), matEstrela); const a = i * Math.PI * 2 / 3; e.position.set(Math.cos(a) * 0.6, 0, Math.sin(a) * 0.6); rig.estrelas.add(e); }
+    rig.luz = new THREE.PointLight(0xffffff, 0, 9, 2); rig.luz.position.y = 1.6; raiz.add(rig.luz);
+  }
+  return rig;
+}
+function animarGolem(r, b, j, T) {
+  const preparo = b.estado === "preparo";
+  const alvo = preparo && b.golpe === "linha" ? Math.atan2(b.dy, b.dx) : b.estado === "atordoado" || b.estado === "recuperacao" ? r.angulo : Math.atan2(j.y - b.y, j.x - b.x);
+  r.angulo = girarPara(r.angulo, alvo, 0.25);
+  r.raiz.position.set(b.x, 0, b.y); r.raiz.rotation.y = -r.angulo;
+  r.corAlvo.copy(b.flash > 0 ? BRANCO : preparo ? COR_BARRO[b.golpe] : b.estado === "recuperacao" ? COR_BARRO.recuperacao : b.estado === "atordoado" ? COR_BARRO.atordoado : COR_BARRO.normal);
+  r.barro.color.lerp(r.corAlvo, b.flash > 0 || preparo ? 0.6 : 0.2);
+  const pulso = preparo ? 0.22 + 0.12 * Math.sin(b.t * 22) : 0;
+  r.brilho.copy(preparo ? COR_BARRO[b.golpe] : b.flash > 0 ? BRANCO : PRETO).multiplyScalar(preparo ? pulso : 0.35);
+  r.barro.emissive.lerp(r.brilho, 0.5);
+  r.olhos.color.copy(preparo ? BRANCO : b.estado === "atordoado" ? COR_BARRO.atordoado : PRETO);
+  r.luz.color.copy(preparo ? COR_BARRO[b.golpe] : PRETO); r.luz.intensity = preparo ? 2.2 : 0;
+  let ex = 1, ey = 1, incl = 0, pulo = 0, tremor = 0;
+  if (b.estado === "perseguir") { incl = Math.sin(T * 9) * 0.07; pulo = Math.abs(Math.sin(T * 9)) * 0.07; }
+  else if (preparo) {
+    const aviso = { circulo: C.preparoGolpe, rosca: C.preparoRosca, linha: C.preparoLinha }[b.golpe], f = Math.min(1, b.t / aviso);
+    ey = 1 + f * 0.16; ex = 1 - f * 0.05; tremor = f * 0.035;
+    if (b.golpe === "rosca") { incl = Math.sin(T * 9) * 0.05; pulo = Math.abs(Math.sin(T * 9)) * 0.04; }
+  }
+  else if (b.estado === "atordoado") incl = 0.22 + Math.sin(T * 5) * 0.05;
+  if (b.golpeFlash > 0) { const f = b.golpeFlash / 0.3; ey = 1 - f * 0.28; ex = 1 + f * 0.2; }
+  r.corpo.scale.set(ex, ey, ex); r.corpo.rotation.x = incl;
+  r.corpo.position.set(Math.sin(T * 67) * tremor, pulo, Math.cos(T * 53) * tremor);
+  r.estrelas.visible = b.estado === "atordoado"; r.estrelas.rotation.y = T * 5;
+}
+
+// Mobs: três bichos pequenos, cada um com a cor e a silhueta do seu disparo.
+// laranja (reto): um chifre comprido para a frente. rosa (área): cogumelo de chapéu largo. azul-esverdeado (leque): três pontas abertas.
+const COR_MOB3 = { reto: cor3(COR_MOB.reto), area: cor3(COR_MOB.area), leque: cor3(COR_MOB.leque) };
+const COR_MOB_CANSADO = { reto: cor3("#6e4520"), area: cor3("#6b3551"), leque: cor3("#1f6262") }, COR_ATORDOADO = cor3("#8f8aa0"), COR_AVISO_MOB = cor3("#ffd166");
+function criarMob(tipo) {
+  const raiz = new THREE.Group(), corpo = new THREE.Group(); raiz.add(corpo); cenaLuta.add(raiz);
+  const pelo = new THREE.MeshStandardMaterial({ color: COR_MOB3[tipo].clone(), roughness: 0.8, flatShading: true });
+  const escuro = mat("#22252e"), claro = mat("#e9e2d0", { roughness: 0.5 }), olho = matLuz("#fff6da");
+  for (const lado of [-1, 1]) malha(new THREE.SphereGeometry(0.12, 8, 6), escuro, 0.05, 0.1, lado * 0.17, corpo);
+  let alturaOlho = 0.95, frenteOlho = 0.22;
+  if (tipo === "reto") {
+    malha(new THREE.CylinderGeometry(0.2, 0.33, 0.62, 8), pelo, 0, 0.5, 0, corpo);
+    malha(new THREE.IcosahedronGeometry(0.27, 1), pelo, 0.02, 0.98, 0, corpo);
+    const chifre = malha(new THREE.ConeGeometry(0.09, 0.7, 8), claro, 0.52, 1.02, 0, corpo); chifre.rotation.z = -Math.PI / 2;
+  } else if (tipo === "area") {
+    malha(new THREE.IcosahedronGeometry(0.34, 1), pelo, 0, 0.46, 0, corpo);
+    malha(new THREE.SphereGeometry(0.52, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2), pelo, 0, 0.7, 0, corpo);
+    malha(new THREE.SphereGeometry(0.13, 8, 6), claro, 0, 1.22, 0, corpo);
+    alturaOlho = 0.56; frenteOlho = 0.3;
+  } else {
+    malha(new THREE.CylinderGeometry(0.33, 0.2, 0.7, 8), pelo, 0, 0.5, 0, corpo);
+    malha(new THREE.IcosahedronGeometry(0.25, 1), pelo, 0, 0.98, 0, corpo);
+    for (const a of [-0.6, 0, 0.6]) {
+      const ponta = malha(new THREE.ConeGeometry(0.07, 0.5, 6), claro, 0.2 + Math.cos(a) * 0.32, 1.02, Math.sin(a) * 0.4, corpo);
+      ponta.rotation.set(0, -a, -Math.PI / 2); ponta.rotation.order = "YXZ";
+    }
+  }
+  for (const lado of [-1, 1]) { const o = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 5), olho); o.position.set(frenteOlho, alturaOlho, lado * 0.1); corpo.add(o); }
+  return { raiz, corpo, pelo, tipo, angulo: Math.PI, fase: Math.random() * 6, corAlvo: new THREE.Color(), brilho: new THREE.Color() };
+}
+function animarMob(r, m, j, T) {
+  const mirando = m.estado === "preparo" || m.estado === "recuperacao";
+  const alvo = mirando ? Math.atan2(m.dy, m.dx) : m.estado === "atordoado" ? r.angulo : Math.atan2(j.y - m.y, j.x - m.x);
+  r.angulo = girarPara(r.angulo, alvo, 0.3);
+  r.raiz.position.set(m.x, 0, m.y); r.raiz.rotation.y = -r.angulo;
+  r.corAlvo.copy(m.flash > 0 ? BRANCO : m.estado === "atordoado" ? COR_ATORDOADO : m.estado === "recuperacao" ? COR_MOB_CANSADO[m.tipo] : COR_MOB3[m.tipo]);
+  r.pelo.color.lerp(r.corAlvo, 0.4);
+  const f = m.estado === "preparo" ? Math.min(1, m.t / C.preparoMob) : 0;
+  r.brilho.copy(m.flash > 0 ? BRANCO : m.estado === "preparo" ? COR_AVISO_MOB : PRETO).multiplyScalar(m.flash > 0 ? 0.4 : f * 0.45);
+  r.pelo.emissive.lerp(r.brilho, 0.5);
+  const esc = 1 + f * 0.22;
+  r.corpo.scale.set(esc, esc, esc);
+  r.corpo.position.y = m.estado === "andar" ? Math.abs(Math.sin(T * 8 + r.fase)) * 0.12 : 0;
+  r.corpo.rotation.x = m.estado === "atordoado" ? 0.3 + Math.sin(T * 5) * 0.06 : 0;
+  r.corpo.rotation.z = m.estado === "preparo" ? f * 0.25 : 0; // inclina para trás antes de disparar
+}
+
+// ===== Cena da luta =====
+cenaLuta.add(new THREE.HemisphereLight(cor3("#b9c9ff"), cor3("#2a2622"), 0.7));
+const solLuta = new THREE.DirectionalLight(cor3("#fff0dc"), 1.05);
+solLuta.position.set(LARG / 2 - 9, 22, ALT / 2 + 7); solLuta.target.position.set(LARG / 2, 0, ALT / 2);
+solLuta.castShadow = true; solLuta.shadow.mapSize.set(2048, 2048); solLuta.shadow.bias = -0.0004; solLuta.shadow.normalBias = 0.03;
+Object.assign(solLuta.shadow.camera, { left: -17, right: 17, top: 14, bottom: -14, near: 1, far: 60 });
+cenaLuta.add(solLuta, solLuta.target);
+const ESC_CHAO = 80; // pixels por metro da textura do piso
+const telaPiso = document.createElement("canvas"); telaPiso.width = LARG * ESC_CHAO; telaPiso.height = ALT * ESC_CHAO;
+const texPiso = new THREE.CanvasTexture(telaPiso); texPiso.encoding = THREE.sRGBEncoding;
+texPiso.anisotropy = renderizador.capabilities.getMaxAnisotropy();
+(function pintarPiso() {
+  const c = telaPiso.getContext("2d"), L = 2 * ESC_CHAO;
+  c.fillStyle = "#2b2f38"; c.fillRect(0, 0, telaPiso.width, telaPiso.height);
+  for (let i = 0; i * L < telaPiso.width; i++) for (let k = 0; k * L < telaPiso.height; k++) {
+    const tom = 44 + ((i * 73 + k * 37 + i * k) % 5) * 4;
+    c.fillStyle = `rgb(${tom},${tom + 4},${tom + 12})`; c.fillRect(i * L + 3, k * L + 3, L - 6, L - 6);
+  }
+  if (!window.CHAO3D) return;
+  const img = new Image();
+  img.onload = () => {
+    const fw = img.height;
+    for (let i = 0; i * fw < telaPiso.width; i++) for (let k = 0; k * fw < telaPiso.height; k++)
+      c.drawImage(img, ((i * 73 + k * 37 + i * k) % 4) * fw, 0, fw, fw, i * fw, k * fw, fw, fw);
+    texPiso.needsUpdate = true;
+  };
+  img.src = window.CHAO3D;
+})();
+{
+  const piso = new THREE.Mesh(new THREE.PlaneGeometry(LARG, ALT), new THREE.MeshStandardMaterial({ map: texPiso, roughness: 0.92 }));
+  piso.rotation.x = -Math.PI / 2; piso.position.set(LARG / 2, 0, ALT / 2); piso.receiveShadow = true; cenaLuta.add(piso);
+  const fora = new THREE.Mesh(new THREE.PlaneGeometry(140, 110), mat("#14171d", { roughness: 1 }));
+  fora.rotation.x = -Math.PI / 2; fora.position.set(LARG / 2, -0.03, ALT / 2); fora.receiveShadow = true; cenaLuta.add(fora);
+  const pedra = mat("#4a4f5c", { roughness: 0.95, flatShading: true }), pedraEscura = mat("#353945", { roughness: 0.95, flatShading: true });
+  malha(new THREE.BoxGeometry(LARG + 1.6, 1.3, 0.8), pedra, LARG / 2, 0.65, -0.4, cenaLuta);
+  malha(new THREE.BoxGeometry(0.8, 1.3, ALT + 0.8), pedra, -0.4, 0.65, ALT / 2 - 0.4, cenaLuta);
+  malha(new THREE.BoxGeometry(0.8, 1.3, ALT + 0.8), pedra, LARG + 0.4, 0.65, ALT / 2 - 0.4, cenaLuta);
+  malha(new THREE.BoxGeometry(LARG + 1.6, 0.3, 0.8), pedra, LARG / 2, 0.15, ALT + 0.4, cenaLuta); // frente baixa, para não tampar o jogo
+  for (const [x, z, alt] of [[-0.4, -0.4, 2.3], [LARG + 0.4, -0.4, 2.3], [-0.4, ALT + 0.4, 0.7], [LARG + 0.4, ALT + 0.4, 0.7]]) {
+    malha(new THREE.BoxGeometry(1.3, alt, 1.3), pedraEscura, x, alt / 2, z, cenaLuta);
+    if (alt > 1) {
+      const chama = new THREE.Mesh(new THREE.OctahedronGeometry(0.28), matLuz("#ffe9c4")); chama.position.set(x, alt + 0.45, z); cenaLuta.add(chama);
+      const luz = new THREE.PointLight(cor3("#ffdcae"), 1.1, 16, 2); luz.position.set(x + (x < 0 ? 1 : -1), alt + 0.6, z + 1); cenaLuta.add(luz);
+    }
+  }
+}
+// Desenho plano colado no chão da arena: áreas de golpe, miras, alcance, destino
+const GE = 64; // pixels por metro
+const telaChao = document.createElement("canvas"); telaChao.width = LARG * GE; telaChao.height = ALT * GE;
+const g = telaChao.getContext("2d");
+const texChao = new THREE.CanvasTexture(telaChao); texChao.encoding = THREE.sRGBEncoding;
+texChao.generateMipmaps = false; texChao.minFilter = THREE.LinearFilter;
+{
+  const camada = new THREE.Mesh(new THREE.PlaneGeometry(LARG, ALT), new THREE.MeshBasicMaterial({ map: texChao, transparent: true, depthWrite: false, toneMapped: false }));
+  camada.rotation.x = -Math.PI / 2; camada.position.set(LARG / 2, 0.025, ALT / 2); camada.renderOrder = 1; cenaLuta.add(camada);
+}
+function circulo(x, y, r, preencher, tracar, larg = 3) {
+  g.beginPath(); g.arc(x * GE, y * GE, Math.max(0, r) * GE, 0, Math.PI * 2);
+  if (preencher) { g.fillStyle = preencher; g.fill(); }
+  if (tracar) { g.strokeStyle = tracar; g.lineWidth = larg; g.stroke(); }
+}
+function arco(x, y, r, frac, c) {
+  g.beginPath(); g.arc(x * GE, y * GE, r * GE, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * frac);
+  g.strokeStyle = c; g.lineWidth = 6; g.stroke();
+}
+function linhaMira(x, y, dx, dy, L, c, larg = 3) {
+  g.strokeStyle = c; g.lineWidth = larg; g.beginPath();
+  g.moveTo(x * GE, y * GE); g.lineTo((x + dx * L) * GE, (y + dy * L) * GE); g.stroke();
+}
+function areaChefe(b) {
+  const golpe = b.golpe || b.golpeVisto; if (!golpe) return;
+  const forma = (frac, preencher, tracar) => {
+    g.beginPath();
+    if (golpe === "circulo") g.arc(b.x * GE, b.y * GE, C.raioGolpe * frac * GE, 0, Math.PI * 2);
+    else if (golpe === "rosca") {
+      const ext = C.roscaInterno + (C.roscaExterno - C.roscaInterno) * frac;
+      g.arc(b.x * GE, b.y * GE, ext * GE, 0, Math.PI * 2);
+      g.moveTo((b.x + C.roscaInterno) * GE, b.y * GE);
+      g.arc(b.x * GE, b.y * GE, C.roscaInterno * GE, 0, Math.PI * 2, true);
+      if (C.roscaNucleo > 0) { g.moveTo((b.x + C.roscaNucleo * frac) * GE, b.y * GE); g.arc(b.x * GE, b.y * GE, C.roscaNucleo * frac * GE, 0, Math.PI * 2); }
+    } else {
+      const nx = -b.dy, ny = b.dx, w = C.linhaLargura / 2, L = C.linhaComprimento * frac;
+      g.moveTo((b.x + nx * w) * GE, (b.y + ny * w) * GE);
+      g.lineTo((b.x + nx * w + b.dx * L) * GE, (b.y + ny * w + b.dy * L) * GE);
+      g.lineTo((b.x - nx * w + b.dx * L) * GE, (b.y - ny * w + b.dy * L) * GE);
+      g.lineTo((b.x - nx * w) * GE, (b.y - ny * w) * GE);
+      g.closePath();
+    }
+    if (preencher) { g.fillStyle = preencher; g.fill("evenodd"); }
+    if (tracar) { g.strokeStyle = tracar; g.lineWidth = 3; g.stroke(); }
+  };
+  if (b.estado === "preparo") {
+    const aviso = { circulo: C.preparoGolpe, rosca: C.preparoRosca, linha: C.preparoLinha }[b.golpe];
+    const frac = Math.min(1, b.t / aviso);
+    const mostrar = C.modoAviso === "completa" || (C.modoAviso === "parcial" && frac >= C.mostrarEm);
+    if (mostrar) { forma(1, "rgba(255,70,70,0.16)", CORES.perigo); forma(frac, "rgba(255,70,70,0.36)"); }
+  }
+  if (b.golpeFlash > 0) forma(1, `rgba(255,80,80,${0.75 * b.golpeFlash / 0.3})`);
+}
+function desenharChaoLuta() {
+  const j = s.j;
+  g.clearRect(0, 0, telaChao.width, telaChao.height);
+  // alcance do ataque básico
+  g.setLineDash([10, 12]); circulo(j.x, j.y, C.alcance + RAIO_M, null, "rgba(120,185,255,0.38)", 2); g.setLineDash([]);
+  // destino do movimento
+  const alvo = j.alvo || s.alvoGuardado;
+  if (alvo) { circulo(alvo.x, alvo.y, 0.22 + 0.05 * Math.sin(performance.now() / 110), null, CORES.jog, 3); circulo(alvo.x, alvo.y, 0.06, CORES.jog); }
+  // áreas no chão dos mobs (vermelho é só para o que machuca)
+  for (const z of s.zonas) {
+    if (z.estourou) circulo(z.x, z.y, C.raioZona, `rgba(255,80,80,${0.75 * Math.max(0, z.flash) / 0.3})`);
+    else { circulo(z.x, z.y, C.raioZona, "rgba(255,70,70,0.16)", CORES.perigo); circulo(z.x, z.y, C.raioZona * Math.min(1, z.t / C.avisoZona), "rgba(255,70,70,0.36)"); }
+  }
+  for (const i of s.inimigos) {
+    if (i.tipo === "chefe") areaChefe(i);
+    else if (i.estado === "preparo") {
+      // aviso do disparo do mob: linhas de mira (reto e leque) e anel amarelo que se fecha
+      const frac = Math.min(1, i.t / C.preparoMob), c = "rgba(255,80,80,0.5)";
+      const mira = (ang) => { const co = Math.cos(ang), sn = Math.sin(ang); linhaMira(i.x, i.y, i.dx * co - i.dy * sn, i.dx * sn + i.dy * co, C.alcanceBala, c, C.raioBala * 2 * GE * 0.5); };
+      if (i.tipo === "reto") mira(0);
+      else if (i.tipo === "leque") { mira(-C.aberturaLeque); mira(0); mira(C.aberturaLeque); }
+      arco(i.x, i.y, i.raio + 0.3, frac, CORES.prep);
+    }
+    if (i.marca > 0) circulo(i.x, i.y, i.raio + 0.35, null, COR_MARCA, 5);
+    if (i.explosao > 0) circulo(i.x, i.y, i.raio + 0.3 + (0.35 - i.explosao) * 6, null, COR_MARCA, 6);
+  }
+  // anel claro no alvo do ataque básico (inimigo mais perto do mouse)
+  const mira = !s.fim && alvoDoMouse();
+  if (mira) circulo(mira.x, mira.y, mira.raio + 0.2, null, "rgba(255,255,255,0.75)", 3);
+  // preparo e recuperação do jogador (arco em volta dele) e linha de mira
+  if (j.acao) {
+    const a = j.acao, [prep, recup] = tempos(a.tipo);
+    if (a.fase === "preparo") arco(j.x, j.y, RAIO_J + 0.25, prep > 0 ? Math.min(1, a.t / prep) : 1, a.tipo === "p" ? "#6fd08c" : CORES.prep);
+    else if (a.fase === "recuperacao") arco(j.x, j.y, RAIO_J + 0.25, recup > 0 ? Math.min(1, a.t / recup) : 1, "rgba(170,180,200,0.8)");
+    if (a.fase === "preparo") {
+      if (a.tipo === "aa") linhaMira(j.x, j.y, a.dx, a.dy, dist(j.x, j.y, a.alvo.x, a.alvo.y), "rgba(255,209,102,0.6)");
+      else if (a.tipo === "q") linhaMira(j.x, j.y, a.dx, a.dy, C.alcanceQ, "rgba(255,255,255,0.6)");
+      else if (a.tipo === "w") linhaMira(j.x, j.y, a.dx, a.dy, C.alcanceW, "rgba(199,125,255,0.7)");
+    }
+  }
+  if (j.aparoFlash > 0) circulo(j.x, j.y, RAIO_J + 0.3 + (0.4 - j.aparoFlash) * 5, null, `rgba(155,231,255,${j.aparoFlash / 0.4})`, 6);
+  texChao.needsUpdate = true;
+}
+
+// Peças da luta: jogador, inimigos (um modelo por inimigo vivo, reaproveitado entre lutas), tiros e disparos
+const JL = criarJogador(cenaLuta); JL.ux = 0; JL.uy = 0; JL.faseAnt = null;
+const modelosLivres = { chefe: [], reto: [], area: [], leque: [] }, modeloDe = new Map();
+function modeloPara(i) {
+  let r = modeloDe.get(i);
+  if (!r) {
+    r = modelosLivres[i.tipo].pop() || (i.tipo === "chefe" ? criarGolem(cenaLuta, true) : criarMob(i.tipo));
+    r.raiz.visible = true; r.angulo = Math.PI; modeloDe.set(i, r);
+  }
+  return r;
+}
+function fazerFila(criar) { // lista de peças iguais, criadas conforme a necessidade
+  const lista = []; let usados = 0;
+  return { pegar() { if (usados >= lista.length) { const m = criar(); cenaLuta.add(m); lista.push(m); } const m = lista[usados++]; m.visible = true; return m; },
+    fechar() { for (let i = usados; i < lista.length; i++) lista[i].visible = false; usados = 0; } };
+}
+function comHalo(nucleo, corHalo, raio, esticar) {
+  const grupo = new THREE.Group(); grupo.add(nucleo);
+  const halo = new THREE.Mesh(new THREE.SphereGeometry(raio, 12, 8), matBrilho(corHalo, 0.45)); if (esticar) halo.scale.set(2.4, 1, 1);
+  grupo.add(halo); return grupo;
+}
+const deitado = m => { m.rotation.z = -Math.PI / 2; return m; };
+const FILAS = {
+  aa: fazerFila(() => comHalo(deitado(new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.55, 6), matLuz("#ffd166"))), "#ffb93b", 0.16, true)),
+  q: fazerFila(() => comHalo(deitado(new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.09, 1.0, 8), matLuz("#eaf6ff"))), "#7fc8ff", 0.3, true)),
+  w: fazerFila(() => comHalo(new THREE.Mesh(new THREE.SphereGeometry(0.2, 14, 10), matLuz("#d9a6ff")), COR_MARCA, 0.38, false)),
+  // disparo dos mobs: bola vermelha com miolo claro (o raio vem do painel)
+  bala: fazerFila(() => comHalo(new THREE.Mesh(new THREE.SphereGeometry(1, 14, 10), matLuz("#ff5a5a")), "#ff3b3b", 1.35, false)),
+  explosao: fazerFila(() => new THREE.Mesh(new THREE.SphereGeometry(1, 20, 14), matBrilho(COR_MARCA, 0.5))),
+};
+
+function barraVida(x, altura, y, frac, c, larg) {
+  const p = naTela(x, altura, y), h = 6;
+  hud.fillStyle = "rgba(10,12,18,0.8)"; hud.fillRect(p.x - larg / 2 - 1, p.y - 1, larg + 2, h + 2);
+  hud.fillStyle = c; hud.fillRect(p.x - larg / 2, p.y, larg * Math.max(0, frac), h);
+  return p;
+}
+function caixaTexto(texto, cx, y, larg, alinhar = "center") {
+  hud.fillStyle = "rgba(10,12,18,0.8)"; hud.fillRect(alinhar === "center" ? cx - larg / 2 : cx, y, larg, 32);
+  hud.fillStyle = CORES.texto; hud.textAlign = alinhar; hud.font = "600 16px " + FONTE;
+  hud.fillText(texto, alinhar === "center" ? cx : cx + 8, y + 22);
+}
+
+function desenharLuta() {
+  const j = s.j, T = s.tempo, a0 = j.acao;
+  desenharChaoLuta();
+
+  // jogador
+  const moveu = Math.hypot(j.x - JL.ux, j.y - JL.uy), mirando = a0 && a0.tipo !== "r" && a0.tipo !== "p";
+  const fase = a0 ? a0.tipo + a0.fase : null;
+  animarJogador(JL, { x: j.x, y: j.y, T,
+    dir: mirando ? Math.atan2(a0.dy, a0.dx) : !a0 && moveu > 0.004 ? Math.atan2(j.y - JL.uy, j.x - JL.ux) : null, giro: mirando ? 0.5 : 0.3,
+    andando: !a0 && !!j.andando, avancando: !!(a0 && a0.tipo === "e" && a0.fase === "ativo"),
+    puxar: mirando && a0.fase === "preparo" ? Math.min(1, a0.t / (tempos(a0.tipo)[0] || 1)) : 0, virote: !!(mirando && a0.fase === "preparo"),
+    aparando: !!(a0 && a0.tipo === "r" && a0.fase === "ativo"), aparoT: a0 ? a0.t : 0,
+    disparou: fase !== JL.faseAnt && !!mirando && a0.fase === "recuperacao" && a0.tipo !== "e",
+    dor: j.flash > 0 ? j.flash / 0.3 : 0, cura: a0 && a0.tipo === "p" ? 1 : 0 });
+  JL.ux = j.x; JL.uy = j.y; JL.faseAnt = fase;
+
+  // inimigos: cada um com o seu modelo; quem morreu devolve o modelo
+  const vivos = new Set(s.inimigos);
+  for (const [i, r] of modeloDe) if (!vivos.has(i)) { r.raiz.visible = false; modelosLivres[i.tipo].push(r); modeloDe.delete(i); }
+  for (const i of s.inimigos) { const r = modeloPara(i); if (i.tipo === "chefe") animarGolem(r, i, j, T); else animarMob(r, i, j, T); }
+
+  // tiros do jogador, disparos dos mobs e explosões da marca
+  for (const t of s.tiros) {
+    const m = FILAS[t.tipo].pegar(); m.position.set(t.x, 1.05, t.y);
+    m.rotation.y = -(t.tipo === "aa" ? Math.atan2(t.alvo.y - t.y, t.alvo.x - t.x) : Math.atan2(t.dy, t.dx));
+  }
+  for (const t of s.balas) { const m = FILAS.bala.pegar(); m.position.set(t.x, 0.9, t.y); m.scale.setScalar(C.raioBala); }
+  for (const i of s.inimigos) if (i.explosao > 0) {
+    const m = FILAS.explosao.pegar(), f = (0.35 - i.explosao) / 0.35, r = i.raio + 0.2 + f * 2.2;
+    m.position.set(i.x, 1, i.y); m.scale.setScalar(r); m.material.opacity = 0.65 * (1 - f);
+  }
+  for (const k in FILAS) FILAS[k].fechar();
+
+  renderizador.toneMappingExposure = 1.0;
+  renderizador.render(cenaLuta, camera);
+
+  // por cima: vida, cargas da marca, recargas, poções, textos
+  hud.clearRect(0, 0, VL, VA);
+  for (const i of s.inimigos) {
+    const chefe = i.tipo === "chefe", p = barraVida(i.x, chefe ? 3.0 : 1.75, i.y, i.vida / i.vidaMax, CORES.perigo, chefe ? 76 : 40);
+    if (i.marca > 0) for (let k = 0; k < C.cargasMarca; k++) {
+      // uma bolinha por ataque básico necessário; cheia = já acertado
+      const cx = p.x + (k - (C.cargasMarca - 1) / 2) * 14, cy = p.y - 10;
+      hud.beginPath(); hud.arc(cx, cy, 4.5, 0, Math.PI * 2);
+      hud.fillStyle = k < i.cargas ? COR_MARCA : "rgba(10,12,18,0.8)"; hud.fill(); hud.strokeStyle = COR_MARCA; hud.lineWidth = 1.5; hud.stroke();
+    }
+  }
+  barraVida(j.x, 1.95, j.y, j.vida / C.vidaJogador, CORES.jog, 50);
+  const tam = 44, y0 = VA - tam - 12;
+  HABS.forEach((k, i) => {
+    const x0 = 12 + i * (tam + 8), total = RECARGA[k](), r = j.rec[k];
+    hud.fillStyle = "rgba(17,20,27,0.85)"; hud.fillRect(x0, y0, tam, tam);
+    hud.strokeStyle = r > 0 ? CORES.grade : CORES.jog; hud.lineWidth = 2; hud.strokeRect(x0, y0, tam, tam);
+    if (r > 0 && total > 0) { hud.fillStyle = "rgba(138,147,166,0.35)"; const h = tam * r / total; hud.fillRect(x0, y0 + tam - h, tam, h); }
+    hud.textAlign = "center"; hud.textBaseline = "middle";
+    hud.fillStyle = r > 0 ? CORES.fraco : CORES.texto; hud.font = "600 18px " + FONTE;
+    hud.fillText(r > 0 ? r.toFixed(1) : k.toUpperCase(), x0 + tam / 2, y0 + tam / 2);
+  });
+  {
+    const x0 = 12 + 4 * (tam + 8) + 10; // poções (tecla 1)
+    hud.fillStyle = "rgba(17,20,27,0.85)"; hud.fillRect(x0, y0, tam, tam);
+    hud.strokeStyle = mundo.pots > 0 ? "#6fd08c" : CORES.grade; hud.lineWidth = 2; hud.strokeRect(x0, y0, tam, tam);
+    hud.textAlign = "center"; hud.textBaseline = "middle";
+    hud.fillStyle = mundo.pots > 0 ? CORES.texto : CORES.fraco; hud.font = "600 18px " + FONTE;
+    hud.fillText(mundo.pots, x0 + tam / 2, y0 + tam / 2 - 4);
+    hud.font = "11px " + FONTE; hud.fillStyle = CORES.fraco; hud.fillText("tecla 1", x0 + tam / 2, y0 + tam - 8);
+  }
+  hud.textBaseline = "alphabetic";
+  if (s.fim) {
+    hud.fillStyle = "rgba(10,12,18,0.72)"; hud.fillRect(0, 0, VL, VA);
+    hud.fillStyle = CORES.texto; hud.textAlign = "center"; hud.font = "600 40px " + FONTE;
+    hud.fillText(s.fim === "venceu" ? `${lugarAtual.nome}: vencido` : "Você morreu", VL / 2, VA / 2 - 24);
+    hud.font = "18px " + FONTE; hud.fillStyle = CORES.fraco;
+    hud.fillText(`${s.tempo.toFixed(1)} s · ${s.levados} golpes levados · ${s.aparos} aparos`, VL / 2, VA / 2 + 12);
+    hud.fillText(`Usos: ${textoUsos()}`, VL / 2, VA / 2 + 38);
+    hud.fillText(s.fim === "venceu" ? "Espaço para voltar ao mapa" : "Espaço para voltar à última fogueira", VL / 2, VA / 2 + 64);
+  } else {
+    hud.textAlign = "right"; hud.font = "14px " + FONTE; hud.fillStyle = CORES.texto;
+    hud.fillText(`${lugarAtual.nome} · ${s.inimigos.length} inimigos`, VL - 14, 24);
+  }
+}
+
+// ===== Cena do mapa =====
+cenaMapa.add(new THREE.HemisphereLight(cor3("#cfe0ff"), cor3("#3a3626"), 0.8));
+const solMapa = new THREE.DirectionalLight(cor3("#fff1d6"), 1.15);
+solMapa.castShadow = true; solMapa.shadow.mapSize.set(2048, 2048); solMapa.shadow.bias = -0.0005; solMapa.shadow.normalBias = 0.15;
+Object.assign(solMapa.shadow.camera, { left: -90, right: 90, top: 80, bottom: -80, near: 10, far: 320 });
+cenaMapa.add(solMapa, solMapa.target);
+const TAM_J_MAPA = 3.2; // no mapa o personagem é desenhado maior, como uma peça de tabuleiro, para não sumir
+const celulas = (letras) => { const r = []; for (let cy = 0; cy < NL; cy++) for (let cx = 0; cx < NC; cx++) if (letras.includes(TERRENO[cy][cx])) r.push({ cx, cy }); return r; };
+{
+  // chão pintado: grama com manchas, pedra debaixo das montanhas, margem de areia no rio
+  const PM = 8, tl = document.createElement("canvas"); tl.width = MAPA_L * PM; tl.height = MAPA_A * PM;
+  const c = tl.getContext("2d"), rnd = sorteio(7);
+  c.fillStyle = "#4a6b3c"; c.fillRect(0, 0, tl.width, tl.height);
+  for (let i = 0; i < 2600; i++) {
+    const x = rnd() * tl.width, y = rnd() * tl.height, r = 10 + rnd() * 46;
+    c.fillStyle = ["rgba(96,128,66,0.22)", "rgba(52,84,46,0.25)", "rgba(120,132,70,0.14)"][i % 3];
+    c.beginPath(); c.ellipse(x, y, r, r * (0.5 + rnd() * 0.5), rnd() * 3, 0, Math.PI * 2); c.fill();
+  }
+  for (let i = 0; i < 5000; i++) { c.fillStyle = i % 2 ? "rgba(30,52,30,0.5)" : "rgba(150,170,90,0.4)"; c.fillRect(rnd() * tl.width, rnd() * tl.height, 2, 3); }
+  const w = CASA * PM;
+  for (const { cx, cy } of celulas("~=-")) { c.fillStyle = "#8f8563"; c.fillRect(cx * w - 5, cy * w - 5, w + 10, w + 10); }
+  for (const { cx, cy } of celulas("#")) { c.fillStyle = "#555a62"; c.fillRect(cx * w - 3, cy * w - 3, w + 6, w + 6); }
+  const tex = new THREE.CanvasTexture(tl); tex.encoding = THREE.sRGBEncoding; tex.anisotropy = renderizador.capabilities.getMaxAnisotropy();
+  const chao = new THREE.Mesh(new THREE.PlaneGeometry(MAPA_L, MAPA_A), new THREE.MeshStandardMaterial({ map: tex, roughness: 1 }));
+  chao.rotation.x = -Math.PI / 2; chao.position.set(MAPA_L / 2, 0, MAPA_A / 2); chao.receiveShadow = true; cenaMapa.add(chao);
+  const fora = new THREE.Mesh(new THREE.PlaneGeometry(1400, 1400), matLuz("#0b0e14", { toneMapped: false }));
+  fora.rotation.x = -Math.PI / 2; fora.position.set(MAPA_L / 2, -0.2, MAPA_A / 2); cenaMapa.add(fora);
+  // rio: placas de água; pontes de madeira por cima
+  const rio = celulas("~=-"), agua = new THREE.InstancedMesh(new THREE.BoxGeometry(CASA, 0.16, CASA), mat("#2f7fb5", { roughness: 0.2, metalness: 0.15 }), rio.length), aux = new THREE.Object3D();
+  rio.forEach(({ cx, cy }, i) => { aux.position.set((cx + 0.5) * CASA, 0.05, (cy + 0.5) * CASA); aux.updateMatrix(); agua.setMatrixAt(i, aux.matrix); });
+  agua.receiveShadow = true; cenaMapa.add(agua);
+  const tabua = mat("#9a7448"), corrimao = mat("#6b4a2e");
+  for (const { cx, cy } of celulas("=-")) {
+    const ponte = new THREE.Group(); ponte.position.set((cx + 0.5) * CASA, 0, (cy + 0.5) * CASA);
+    if (TERRENO[cy][cx] === "-") ponte.rotation.y = Math.PI / 2; // "-" atravessa de lado; "=" de cima para baixo
+    malha(new THREE.BoxGeometry(3.2, 0.35, CASA + 1.2), tabua, 0, 0.3, 0, ponte);
+    for (const lado of [-1, 1]) {
+      malha(new THREE.BoxGeometry(0.25, 0.25, CASA + 1.2), corrimao, lado * 1.6, 1.1, 0, ponte);
+      for (const k of [-1, 0, 1]) malha(new THREE.BoxGeometry(0.25, 0.9, 0.25), corrimao, lado * 1.6, 0.7, k * 2.3, ponte);
+    }
+    cenaMapa.add(ponte);
+  }
+}
+// montanhas: um bloco de pedra por quadrado (a parede) com um pico em cima. Só aparecem depois que a névoa some dali.
+const montanhas = celulas("#"), auxM = new THREE.Object3D();
+const rochaBase = new THREE.InstancedMesh(new THREE.BoxGeometry(CASA, 1.6, CASA), mat("#5a5f68", { roughness: 1, flatShading: true }), montanhas.length);
+const rochaPico = new THREE.InstancedMesh(new THREE.ConeGeometry(2.7, 1, 6), mat("#7b818c", { roughness: 1, flatShading: true }), montanhas.length);
+{
+  const rnd = sorteio(3);
+  for (const m of montanhas) { m.alt = 4.5 + rnd() * 5; m.giro = rnd() * 6; m.dx = (rnd() - 0.5) * 1.2; m.dz = (rnd() - 0.5) * 1.2; }
+  for (const im of [rochaBase, rochaPico]) { im.castShadow = true; im.receiveShadow = true; cenaMapa.add(im); }
+}
+// névoa: um pano escuro logo acima do chão, com um ponto por quadrado do mapa (o filtro da textura suaviza a borda)
+const telaNevoa = document.createElement("canvas"); telaNevoa.width = NC; telaNevoa.height = NL;
+const texNevoa = new THREE.CanvasTexture(telaNevoa); texNevoa.encoding = THREE.sRGBEncoding; texNevoa.generateMipmaps = false; texNevoa.minFilter = THREE.LinearFilter; texNevoa.magFilter = THREE.LinearFilter;
+{
+  const pano = new THREE.Mesh(new THREE.PlaneGeometry(MAPA_L, MAPA_A), new THREE.MeshBasicMaterial({ map: texNevoa, transparent: true, depthWrite: false, toneMapped: false }));
+  pano.rotation.x = -Math.PI / 2; pano.position.set(MAPA_L / 2, 1.9, MAPA_A / 2); pano.renderOrder = 2; cenaMapa.add(pano);
+}
+let nevoaVista = null, nevoaTam = -1;
+function atualizarNevoa() {
+  if (nevoaVista === mundo.nevoa && nevoaTam === mundo.nevoa.size) return;
+  nevoaVista = mundo.nevoa; nevoaTam = mundo.nevoa.size;
+  const c = telaNevoa.getContext("2d");
+  c.clearRect(0, 0, NC, NL); c.fillStyle = "#0b0e14";
+  for (let cx = 0; cx < NC; cx++) for (let cy = 0; cy < NL; cy++) if (!mundo.nevoa.has(cx + "," + cy)) c.fillRect(cx, cy, 1, 1);
+  texNevoa.needsUpdate = true;
+  montanhas.forEach((m, i) => {
+    const visivel = mundo.nevoa.has(m.cx + "," + m.cy), x = (m.cx + 0.5) * CASA, z = (m.cy + 0.5) * CASA;
+    auxM.rotation.set(0, 0, 0); auxM.position.set(x, 0.8, z); auxM.scale.setScalar(visivel ? 1 : 0.0001); auxM.updateMatrix(); rochaBase.setMatrixAt(i, auxM.matrix);
+    auxM.rotation.set(0, m.giro, 0); auxM.position.set(x + m.dx, 1.6 + m.alt / 2, z + m.dz); auxM.scale.set(visivel ? 1 : 0.0001, visivel ? m.alt : 0.0001, visivel ? 1 : 0.0001); auxM.updateMatrix(); rochaPico.setMatrixAt(i, auxM.matrix);
+  });
+  rochaBase.instanceMatrix.needsUpdate = true; rochaPico.instanceMatrix.needsUpdate = true;
+}
+// lugares: cada um é uma construção atrás do ponto de parada, e um anel no chão marca onde parar
+const COR_LUGAR = { fogueira: "#ff9f43", dungeon: "#b9a3ff", chefe: "#c94a4a", bau: "#ffd166", emboscada: "#e08a3c" };
+const CINZA_FEITO = cor3("#5b6477");
+const lugares3 = LUGARES.map(l => {
+  const grupo = new THREE.Group(); grupo.position.set(l.x, 0, l.y); cenaMapa.add(grupo);
+  const corL = cor3(COR_LUGAR[l.tipo]);
+  const matAnel = new THREE.MeshBasicMaterial({ color: corL.clone(), toneMapped: false });
+  const anel = new THREE.Mesh(new THREE.TorusGeometry(RAIO_LUGAR, 0.16, 6, 40), matAnel); anel.rotation.x = Math.PI / 2; anel.position.y = 0.12; grupo.add(anel);
+  const obra = new THREE.Group(); obra.position.z = -4.2; grupo.add(obra); // a construção fica um pouco atrás do anel
+  const pedra = mat("#7d8390", { flatShading: true }), madeira = mat("#6b4a2e", { flatShading: true });
+  let atualizar = () => {};
+  if (l.tipo === "fogueira") {
+    obra.position.z = 0; // a fogueira fica no meio do anel
+    for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; malha(new THREE.IcosahedronGeometry(0.42, 0), pedra, Math.cos(a) * 1.3, 0.25, Math.sin(a) * 1.3, obra); }
+    for (let i = 0; i < 3; i++) { const t = malha(new THREE.CylinderGeometry(0.18, 0.2, 2.2, 6), madeira, 0, 0.3, 0, obra); t.rotation.set(Math.PI / 2, 0, i * Math.PI / 3); t.rotation.order = "YXZ"; t.rotation.y = i * Math.PI / 3; }
+    const chama = new THREE.Mesh(new THREE.ConeGeometry(0.75, 2.4, 7), matLuz("#ffb347")); chama.position.y = 1.5; obra.add(chama);
+    const miolo = new THREE.Mesh(new THREE.ConeGeometry(0.4, 1.5, 7), matLuz("#fff0b8")); miolo.position.y = 1.2; obra.add(miolo);
+    const luz = new THREE.PointLight(cor3("#ffb060"), 1.6, 34, 2); luz.position.y = 3; obra.add(luz);
+    const retorno = new THREE.Mesh(new THREE.TorusGeometry(RAIO_LUGAR + 0.9, 0.12, 6, 44), matLuz("#ffffff", { toneMapped: false })); retorno.rotation.x = Math.PI / 2; retorno.position.y = 0.14; grupo.add(retorno);
+    atualizar = (e, t) => { const p = 1 + Math.sin(t * 9) * 0.12 + Math.sin(t * 23) * 0.06; chama.scale.set(1, p, 1); luz.intensity = 1.5 + Math.sin(t * 11) * 0.25; retorno.visible = mundo.fogueira === l.id; };
+  } else if (l.tipo === "dungeon") {
+    for (const lado of [-1, 1]) { malha(new THREE.BoxGeometry(1.5, 6, 1.6), pedra, lado * 2.3, 3, 0, obra); malha(new THREE.BoxGeometry(1.1, 1.6, 1.2), pedra, lado * 4.3, 0.8, 0.4, obra); }
+    malha(new THREE.BoxGeometry(6.6, 1.3, 1.9), pedra, 0, 6.5, 0, obra);
+    malha(new THREE.BoxGeometry(3.1, 5.4, 0.5), mat("#0c0d12"), 0, 2.7, -0.2, obra);
+    const matCristal = new THREE.MeshBasicMaterial({ color: corL.clone() });
+    const cristal = new THREE.Mesh(new THREE.OctahedronGeometry(0.9), matCristal); cristal.position.y = 8.6; obra.add(cristal);
+    const luz = new THREE.PointLight(corL, 1.2, 26, 2); luz.position.set(0, 4, 2.5); obra.add(luz);
+    atualizar = (e, t) => { cristal.rotation.y = t * 1.5; cristal.position.y = 8.6 + Math.sin(t * 2) * 0.25; matCristal.color.copy(e.feito ? CINZA_FEITO : corL); luz.intensity = e.feito ? 0 : 1.2; };
+  } else if (l.tipo === "chefe") {
+    malha(new THREE.CylinderGeometry(4.2, 4.8, 0.7, 10), pedra, 0, 0.35, 0, obra);
+    const estatua = criarGolem(obra, false); estatua.raiz.position.set(0, 0.7, 0); estatua.raiz.scale.setScalar(2.6); estatua.raiz.rotation.y = -Math.PI / 2;
+    for (const lado of [-1, 1]) {
+      malha(new THREE.CylinderGeometry(0.16, 0.16, 6.5, 6), madeira, lado * 5.2, 3.25, 0.6, obra);
+      const pano = malha(new THREE.BoxGeometry(1.6, 2.6, 0.1), new THREE.MeshStandardMaterial({ color: corL.clone(), roughness: 0.9 }), lado * 5.2 + 0.9, 5, 0.6, obra); pano.userData.bandeira = true;
+    }
+    atualizar = (e) => { estatua.barro.color.copy(e.feito ? CINZA_FEITO : COR_BARRO.normal); obra.traverse(o => { if (o.userData.bandeira) o.material.color.copy(e.feito ? CINZA_FEITO : corL); }); };
+  } else if (l.tipo === "bau") {
+    obra.position.z = -3.4;
+    const ouro = new THREE.MeshStandardMaterial({ color: corL.clone(), roughness: 0.45, metalness: 0.5 });
+    malha(new THREE.BoxGeometry(3.2, 1.6, 2.1), madeira, 0, 0.8, 0, obra);
+    malha(new THREE.BoxGeometry(3.4, 0.3, 2.3), ouro, 0, 1.0, 0, obra);
+    const tampa = new THREE.Group(); tampa.position.set(0, 1.6, -1.05); obra.add(tampa);
+    const meiaLua = malha(new THREE.CylinderGeometry(1.05, 1.05, 3.2, 10, 1, false, 0, Math.PI), madeira, 0, 0, 1.05, tampa); meiaLua.rotation.set(0, 0, Math.PI / 2); meiaLua.rotation.order = "ZYX"; meiaLua.rotation.x = -Math.PI / 2;
+    malha(new THREE.BoxGeometry(0.5, 0.6, 0.2), ouro, 0, 0.05, 2.15, tampa);
+    atualizar = (e) => { tampa.rotation.x = e.feito ? -1.15 : 0; ouro.color.copy(e.feito ? CINZA_FEITO : corL); };
+  } else { // emboscada: estacas cruzadas com uma bandeira
+    obra.position.z = 0;
+    const matBandeira = new THREE.MeshStandardMaterial({ color: corL.clone(), roughness: 0.9, side: THREE.DoubleSide });
+    for (const lado of [-1, 1]) { const e = malha(new THREE.CylinderGeometry(0.14, 0.18, 5.5, 6), madeira, lado * 0.9, 2.5, 0, obra); e.rotation.z = lado * 0.4; malha(new THREE.ConeGeometry(0.3, 0.9, 6), pedra, lado * -0.25, 5.2, 0, obra).rotation.z = lado * 0.4; }
+    malha(new THREE.CylinderGeometry(0.12, 0.12, 7, 6), madeira, 0, 3.5, -0.3, obra);
+    malha(new THREE.BoxGeometry(2.4, 1.5, 0.08), matBandeira, 1.3, 6.1, -0.3, obra);
+    atualizar = (e) => { matBandeira.color.copy(e.feito ? CINZA_FEITO : corL); };
+  }
+  return { l, grupo, matAnel, corL, atualizar };
+});
+// personagem, destino e linha do caminho
+const JM = criarJogador(cenaMapa); JM.raiz.scale.setScalar(TAM_J_MAPA); JM.ux = 0; JM.uy = 0;
+const destinoMapa = new THREE.Mesh(new THREE.TorusGeometry(1.1, 0.18, 6, 24), matLuz("#4da3ff", { toneMapped: false })); destinoMapa.rotation.x = Math.PI / 2; cenaMapa.add(destinoMapa);
+const linhaCaminho = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(1, 0, 0)]),
+  new THREE.LineDashedMaterial({ color: cor3("#7fbcff"), dashSize: 1.6, gapSize: 1.6, transparent: true, opacity: 0.7, toneMapped: false }));
+cenaMapa.add(linhaCaminho);
+
+function desenharMapa() {
+  const T = mundo.tempo;
+  atualizarNevoa();
+  solMapa.position.set(CAM.foco.x - 45, 110, CAM.foco.z + 40); solMapa.target.position.copy(CAM.foco);
+  const moveu = Math.hypot(mundo.x - JM.ux, mundo.y - JM.uy);
+  animarJogador(JM, { x: mundo.x, y: mundo.y, T, dir: moveu > 0.01 ? Math.atan2(mundo.y - JM.uy, mundo.x - JM.ux) : null, giro: 0.3,
+    andando: moveu > 0.01, avancando: false, puxar: 0, virote: false, aparando: false, aparoT: 0, disparou: false, dor: 0, cura: 0 });
+  JM.ux = mundo.x; JM.uy = mundo.y;
+  for (const p of lugares3) {
+    const e = mundo.estado[p.l.id];
+    p.grupo.visible = e.visto; if (!e.visto) continue;
+    p.matAnel.color.copy(e.feito ? CINZA_FEITO : p.corL); p.atualizar(e, T);
+  }
+  destinoMapa.visible = !!mundo.alvo; linhaCaminho.visible = !!mundo.alvo;
+  if (mundo.alvo) {
+    destinoMapa.position.set(mundo.alvo.x, 0.2, mundo.alvo.y);
+    const pos = linhaCaminho.geometry.attributes.position;
+    pos.setXYZ(0, mundo.x, 0.3, mundo.y); pos.setXYZ(1, mundo.alvo.x, 0.3, mundo.alvo.y); pos.needsUpdate = true;
+    linhaCaminho.computeLineDistances(); linhaCaminho.geometry.computeBoundingSphere();
+  }
+  renderizador.toneMappingExposure = 1.05;
+  renderizador.render(cenaMapa, camera);
+
+  // por cima: nomes dos lugares, dicas, vida, convite e aviso
+  hud.clearRect(0, 0, VL, VA);
+  hud.textAlign = "center"; hud.textBaseline = "alphabetic";
+  for (const l of LUGARES) {
+    const e = mundo.estado[l.id];
+    if (e.visto) {
+      const p = naTela(l.x, 0, l.y + RAIO_LUGAR + 1.5), texto = l.nome + (e.feito ? " ✓" : "");
+      hud.font = "600 13px " + FONTE; hud.lineWidth = 3; hud.strokeStyle = "rgba(10,12,18,0.85)"; hud.strokeText(texto, p.x, p.y + 12);
+      hud.fillStyle = e.feito ? CORES.fraco : CORES.texto; hud.fillText(texto, p.x, p.y + 12);
+    } else if (l.tipo !== "emboscada" && Math.hypot(mundo.x - l.x, mundo.y - l.y) <= C.raioDica) {
+      // dica: algo escondido na névoa, perto o bastante para valer o desvio
+      const p = naTela(l.x, 2, l.y);
+      hud.globalAlpha = 0.35 + 0.35 * Math.sin(T * 4);
+      hud.fillStyle = CORES.prep; hud.font = "600 22px " + FONTE; hud.fillText("?", p.x, p.y + 7);
+      hud.globalAlpha = 1;
+    }
+  }
+  caixaTexto(`Vida ${mundo.vida} de ${C.vidaJogador} · Poções (1): ${mundo.pots}`, 8, VA - 40, 250, "left");
+  const l = lugarPerto();
+  const convite = !l ? "" : l.tipo === "fogueira" ? "Espaço: descansar (as emboscadas voltam)" : l.sala && !mundo.estado[l.id].feito ? `Espaço: entrar em ${l.nome}` : "";
+  if (convite) caixaTexto(convite, VL / 2, VA - 48, 400);
+  if (mundo.avisoT > 0) { hud.globalAlpha = Math.min(1, mundo.avisoT); caixaTexto(mundo.aviso, VL / 2, 14, 340); hud.globalAlpha = 1; }
+}
+function atualizarBarra() {
+  const comLuta = LUGARES.filter(l => l.sala), baus = LUGARES.filter(l => l.tipo === "bau"), feito = l => mundo.estado[l.id].feito;
+  document.getElementById("descobertos").textContent = `${LUGARES.filter(l => mundo.estado[l.id].visto).length} de ${LUGARES.length}`;
+  document.getElementById("limpos").textContent = `${comLuta.filter(feito).length} de ${comLuta.length}`;
+  document.getElementById("baus").textContent = `${baus.filter(feito).length} de ${baus.length}`;
+  document.getElementById("mortes").textContent = mundo.mortes;
+  document.getElementById("tempo").textContent = mundo.tempo.toFixed(0) + " s";
+  document.getElementById("tempo-luta").textContent = mundo.tempoLuta.toFixed(0) + " s";
+}
+
+function desenhar() {
+  atualizarBarra();
+  moverCamera();
+  // a câmera anda, então o ponto do chão embaixo do mouse muda mesmo com o mouse parado
+  mouse = mundoDoMouse();
+  if (direitoSegurado) {
+    if (modo === "mapa") irPara(mouse.x, mouse.y);
+    else if (!s.fim) { if (!s.j.acao) { s.j.alvo = dentro(mouse); s.j.perseguindo = false; } else s.alvoGuardado = dentro(mouse); }
+  }
+  if (modo === "mapa") desenharMapa(); else desenharLuta();
+  // escurece e clareia na troca entre mapa e luta
+  if (fade > 0) { hud.fillStyle = `rgba(0,0,0,${Math.min(1, fade / 0.35)})`; hud.fillRect(0, 0, VL, VA); fade = Math.max(0, fade - 1 / 60); }
+}
+
+// ===== Laço com passo fixo =====
+novoMundo();
+let ultimo = performance.now(), acumulado = 0;
+function quadro(agora) {
+  acumulado += Math.min(0.25, (agora - ultimo) / 1000); ultimo = agora;
+  while (acumulado >= DT) { passo(); acumulado -= DT; }
+  desenhar(); requestAnimationFrame(quadro);
+}
+requestAnimationFrame(quadro);
+
+// ===== Entrada =====
+// O ponto do chão que está embaixo do mouse, visto pela câmera 3D (vale para o mapa e para a arena)
+const raioMouse = new THREE.Raycaster(), planoChao = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), pontoChao = new THREE.Vector3();
+const mouseTela = { x: 0, y: 0 }; // posição do mouse na tela, de -1 a 1
+function mundoDoMouse() {
+  raioMouse.setFromCamera(mouseTela, camera);
+  if (!raioMouse.ray.intersectPlane(planoChao, pontoChao)) return { ...mouse };
+  return { x: pontoChao.x, y: pontoChao.z };
+}
+function posMundo(e) {
+  const r = tela.getBoundingClientRect();
+  mouseTela.x = (e.clientX - r.left) / r.width * 2 - 1; mouseTela.y = 1 - (e.clientY - r.top) / r.height * 2;
+  return mundoDoMouse();
+}
+// destino de movimento na luta sempre dentro da arena (a câmera também mostra o lado de fora)
+const dentro = p => ({ x: limitar(p.x, RAIO_J, LARG - RAIO_J), y: limitar(p.y, RAIO_J, ALT - RAIO_J) });
+let direitoSegurado = false;
+tela.addEventListener("contextmenu", e => e.preventDefault());
+tela.addEventListener("pointerdown", e => {
+  window.focus(); tela.focus({ preventScroll: true });
+  const p = posMundo(e); mouse = p;
+  if (modo === "mapa") { if (e.button === 2) { direitoSegurado = true; irPara(p.x, p.y); } return; }
+  if (s.fim) return;
+  if (e.button === 2) { direitoSegurado = true; const d = dentro(p); comandoMover(d.x, d.y); }
+  else if (e.button === 0) comandoAtacar();
+});
+window.addEventListener("pointerup", e => { if (e.button === 2) direitoSegurado = false; });
+tela.addEventListener("pointermove", e => {
+  mouse = posMundo(e);
+  if (!direitoSegurado) return;
+  if (modo === "mapa") { irPara(mouse.x, mouse.y); return; }
+  if (s.fim) return;
+  if (!s.j.acao) { s.j.alvo = dentro(mouse); s.j.perseguindo = false; }
+  else s.alvoGuardado = dentro(mouse);
+});
+window.addEventListener("keydown", e => {
+  if (["INPUT", "SELECT"].includes(e.target.tagName)) return;
+  const k = e.key.toLowerCase();
+  if (["a", "s", "r", "q", "w", "e", "enter", "f", " ", "1"].includes(k)) e.preventDefault();
+  if (e.repeat && k !== "s") return;
+  if (k === "f") alternarTelaCheia();
+  else if (k === "1") comandoPocao();
+  else if (k === " " || k === "enter") {
+    if (modo === "luta") { if (s.fim) sairDaLuta(); }
+    else {
+      const l = lugarPerto();
+      if (l && l.tipo === "fogueira") { parar(); descansar(l, "Descansou: vida e poções cheias, emboscadas de volta"); }
+      else if (l && l.sala && !mundo.estado[l.id].feito) entrar(l);
+    }
+  }
+  else if (modo === "mapa" && k === "s") parar();
+  else if (modo === "mapa" || s.fim) return;
+  else if (k === "a") comandoAtacar();
+  else if (k === "s") comandoParar();
+  else if (HABS.includes(k)) comandoHabilidade(k, mouse.x, mouse.y);
+});
+document.getElementById("recomecar").addEventListener("click", novoMundo);
+
+// ===== Tela cheia =====
+const palco = document.getElementById("palco"), botaoSair = document.getElementById("sair-cheia");
+const emTelaCheia = () => !!document.fullscreenElement || palco.classList.contains("cheia");
+function mostrarSair() { botaoSair.hidden = !emTelaCheia(); }
+async function alternarTelaCheia() {
+  if (emTelaCheia()) {
+    palco.classList.remove("cheia");
+    if (document.fullscreenElement) { try { await document.exitFullscreen(); } catch (_) {} }
+  } else {
+    try { await palco.requestFullscreen(); } catch (_) { palco.classList.add("cheia"); }
+  }
+  mostrarSair(); tela.focus({ preventScroll: true });
+}
+document.getElementById("tela-cheia").addEventListener("click", alternarTelaCheia);
+botaoSair.addEventListener("click", alternarTelaCheia);
+document.addEventListener("fullscreenchange", () => { mostrarSair(); tela.focus({ preventScroll: true }); });
+window.addEventListener("keydown", e => { if (e.key === "Escape" && palco.classList.contains("cheia")) { palco.classList.remove("cheia"); mostrarSair(); } });
+
+// Mostra se o jogo está recebendo o teclado
+const avisoFoco = document.getElementById("aviso-foco");
+const atualizarFoco = () => {
+  const ok = document.hasFocus() && document.activeElement === tela;
+  avisoFoco.innerHTML = ok ? "Teclado ativo no jogo." : "<b>Clique na arena</b> antes de usar o teclado. Se as teclas forem para outro lugar, clique de novo nela.";
+  tela.style.borderColor = ok ? CORES.jog : "";
+};
+tela.addEventListener("focus", atualizarFoco); tela.addEventListener("blur", atualizarFoco);
+window.addEventListener("blur", atualizarFoco); window.addEventListener("focus", atualizarFoco);
+
+// ===== Painel de ajuste =====
+const caixa = document.getElementById("ajustes");
+function montarPainel() {
+  caixa.innerHTML = "";
+  for (const [chave, nome, min, max, passo] of AJUSTES) {
+    if (chave === "#") { const h = document.createElement("h2"); h.textContent = nome; caixa.appendChild(h); continue; }
+    const d = document.createElement("div"); d.className = "ajuste";
+    d.innerHTML = `<label for="aj-${chave}"><span>${nome}</span><span id="v-${chave}">${C[chave]}</span></label>
+      <input type="range" id="aj-${chave}" min="${min}" max="${max}" step="${passo}" value="${C[chave]}">`;
+    d.querySelector("input").addEventListener("input", ev => {
+      C[chave] = parseFloat(ev.target.value);
+      document.getElementById("v-" + chave).textContent = C[chave];
+    });
+    caixa.appendChild(d);
+  }
+}
+montarPainel();
+const seletorModo = document.getElementById("modo");
+seletorModo.value = C.modoAviso;
+seletorModo.addEventListener("change", () => { C.modoAviso = seletorModo.value; });
+document.getElementById("camera").addEventListener("change", ev => { CAM.modoLuta = ev.target.value; tela.focus({ preventScroll: true }); });
+document.getElementById("padrao").addEventListener("click", () => { Object.assign(C, PADRAO); montarPainel(); seletorModo.value = C.modoAviso; });
+</script>
