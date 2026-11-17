@@ -20,7 +20,7 @@
 
 ## Comandos
 
-Precisa do Node.js instalado (versão 20 ou mais nova). Na pasta do projeto:
+Precisa do Node.js instalado (versão 20.19 ou mais nova; na linha 22, a 22.12 ou mais nova). Na pasta do projeto:
 
 - Instalar (uma vez, e de novo quando `package.json` mudar): `npm install`
 - Rodar o jogo: `npm run jogar` e abrir o endereço que aparecer (normalmente http://localhost:5173)
