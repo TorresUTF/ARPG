@@ -38,7 +38,7 @@ summary { cursor: pointer; font-weight: 600; }
 #palco { display: grid; }
 #palco.cheia, #palco:fullscreen { position: fixed; inset: 0; z-index: 50; background: #000; place-items: center; padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px); }
 #palco.cheia canvas, #palco:fullscreen canvas { width: min(100vw, 150vh); max-width: none; border-radius: 0; border: 0; }
-canvas { image-rendering: pixelated; }
+canvas { image-rendering: auto; }
 #sair-cheia { position: absolute; top: calc(12px + env(safe-area-inset-top, 0px)); right: calc(12px + env(safe-area-inset-right, 0px)); }
 .marcar { display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--texto-fraco); }
 </style>
@@ -79,8 +79,10 @@ canvas { image-rendering: pixelated; }
   </details>
 </main>
 
-<!-- Arte opcional: define window.ARTE. Se não existir, o jogo usa as formas geométricas. -->
+<!-- Arte opcional: define window.ARTE. Se não existir, o jogo usa as formas geométricas.
+     arte-final/arte.js (quando existe) substitui a pixel art e define window.ARTE_PPM. -->
 <script src="arte/arte.js"></script>
+<script src="arte-final/arte.js"></script>
 <script>
 // ===== Números do protótipo (metros e segundos) =====
 const PADRAO = {
@@ -414,7 +416,6 @@ function linhaMira(x, y, dx, dy, L, c) {
 // Peça que faltar cai na forma geométrica.
 const PECAS = ["chao", "jogador", "boneco_normal", "boneco_circulo", "boneco_saturno", "boneco_linha", "boneco_recuperacao",
   "boneco_atordoado", "boneco_atingido", "tiro_aa", "tiro_q", "tiro_w", "marca", "carga", "explosao", "aparo", "destino", "icones"];
-const PX_ARTE = ESC / 20; // pixels de tela por pixel de arte (2)
 const ARTE_IMG = {};
 function atualizarStatusArte() {
   const n = Object.keys(ARTE_IMG).length;
@@ -433,8 +434,10 @@ function carregarArte() {
 // desenha o quadro i de uma folha, centrado em (x, y) metros; devolve false se a peça não existe
 function peca(nome, i, x, y, espelhar = false, ang = 0) {
   const img = ARTE_IMG[nome]; if (!img) return false;
-  const fw = img.height, n = Math.max(1, Math.floor(img.width / fw)), w = fw * PX_ARTE;
-  ctx.save(); ctx.imageSmoothingEnabled = false;
+  // ARTE_PPM: pixels de arte por metro de cada peça (a pixel art usa 20; a arte final, mais)
+  const ppm = (window.ARTE_PPM || {})[nome] || 20;
+  const fw = img.height, n = Math.max(1, Math.floor(img.width / fw)), w = fw * ESC / ppm;
+  ctx.save(); ctx.imageSmoothingEnabled = ppm !== 20; ctx.imageSmoothingQuality = "high";
   ctx.translate(Math.round(x * ESC), Math.round(y * ESC)); if (ang) ctx.rotate(ang); if (espelhar) ctx.scale(-1, 1);
   ctx.drawImage(img, (Math.floor(i) % n) * fw, 0, fw, fw, -w / 2, -w / 2, w, w);
   ctx.restore(); return true;
@@ -446,8 +449,9 @@ function desenhar() {
   const j = s.j, b = s.b;
   ctx.fillStyle = CORES.arena; ctx.fillRect(0, 0, tela.width, tela.height);
   if (ARTE_IMG.chao) {
-    // piso: uma variação sorteada (sempre a mesma) por casa de 1 m
-    for (let x = 0; x < LARG; x++) for (let y = 0; y < ALT; y++) peca("chao", (x * 73 + y * 37 + x * y) % 4, x + 0.5, y + 0.5);
+    // piso: uma variação sorteada (sempre a mesma) por ladrilho; o tamanho do ladrilho vem da arte
+    const L = ARTE_IMG.chao.height / ((window.ARTE_PPM || {}).chao || 20);
+    for (let i = 0; i * L < LARG; i++) for (let k = 0; k * L < ALT; k++) peca("chao", (i * 73 + k * 37 + i * k) % 4, (i + 0.5) * L, (k + 0.5) * L);
   } else {
     // grade de 1 metro
     ctx.strokeStyle = CORES.grade; ctx.lineWidth = 1;
