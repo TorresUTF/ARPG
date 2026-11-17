@@ -1,0 +1,928 @@
+<title>Kiting em 3D</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: arena no topo, painel de ajuste embaixo. Visual escuro único, de propósito (é a tela do jogo).
+   A arena são duas telas empilhadas: a cena 3D embaixo e, por cima, a que desenha vida e recargas e recebe o mouse. */
+:root {
+  --fundo: #11141b;
+  --arena: #171b24;
+  --grade: #222838;
+  --texto: #dfe4ee;
+  --texto-fraco: #8a93a6;
+  --jogador: #4da3ff;
+  --perigo: #ff5a5a;
+  --preparo: #ffd166;
+  --borda: #2c3344;
+  --fonte: "Segoe UI", system-ui, -apple-system, sans-serif;
+  color-scheme: dark;
+}
+html, body { background: var(--fundo); color: var(--texto); font-family: var(--fonte); }
+body { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 16px; }
+main { max-width: 980px; margin: 0 auto; display: grid; gap: 14px; }
+h1 { font-size: 18px; margin: 0; font-weight: 600; letter-spacing: .02em; }
+h2 { font-size: 13px; margin: 6px 0 0; font-weight: 600; color: var(--texto); grid-column: 1 / -1; letter-spacing: .04em; text-transform: uppercase; }
+.ajuda { color: var(--texto-fraco); margin: 0; line-height: 1.5; }
+.ajuda b { color: var(--texto); font-weight: 600; }
+canvas { width: 100%; max-width: 100%; height: auto; display: block; background: var(--arena); border: 1px solid var(--borda); border-radius: 6px; cursor: crosshair; touch-action: none; outline: none; }
+.barra { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; font-variant-numeric: tabular-nums; color: var(--texto-fraco); }
+.barra strong { color: var(--texto); }
+button, select { font: inherit; background: var(--grade); color: var(--texto); border: 1px solid var(--borda); border-radius: 5px; padding: 6px 12px; cursor: pointer; }
+button:hover { border-color: var(--jogador); }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--jogador); outline-offset: 2px; }
+details { border: 1px solid var(--borda); border-radius: 6px; padding: 10px 14px; }
+summary { cursor: pointer; font-weight: 600; }
+.ajustes { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px 24px; margin-top: 12px; }
+.ajuste { display: grid; gap: 2px; min-width: 0; }
+.ajuste label { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--texto-fraco); }
+.ajuste label span:last-child { color: var(--texto); font-variant-numeric: tabular-nums; }
+.ajuste input[type=range] { width: 100%; accent-color: var(--jogador); }
+#palco { display: grid; }
+#palco canvas { grid-area: 1 / 1; }
+#tela { background: transparent; position: relative; }
+#erro3d { grid-area: 1 / 1; place-self: center; padding: 16px; text-align: center; }
+#palco.cheia, #palco:fullscreen { position: fixed; inset: 0; z-index: 50; background: #000; place-items: center; padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px); }
+#palco.cheia canvas, #palco:fullscreen canvas { width: min(100vw, 150vh); max-width: none; border-radius: 0; border: 0; }
+canvas { image-rendering: auto; }
+#sair-cheia { position: absolute; top: calc(12px + env(safe-area-inset-top, 0px)); right: calc(12px + env(safe-area-inset-right, 0px)); }
+.marcar { display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--texto-fraco); }
+</style>
+
+<main>
+  <h1>Protótipo do kiting em 3D</h1>
+  <p class="ajuda"><b>Botão direito</b>: mover (pode segurar). <b>Botão esquerdo</b> ou <b>A</b>: ataque básico no boneco (se estiver longe, você anda até ficar no alcance). <b>Q</b>: tiro mirado no mouse. <b>W</b>: tiro mirado que marca o boneco; mais 3 ataques básicos e a marca explode. <b>E</b>: avanço na direção do mouse. <b>R</b>: aparo; se o golpe do boneco cair dentro da janela curta, ele é anulado e o boneco fica atordoado. <b>S</b>: parar. <b>Enter</b>: recomeçar. <b>F</b>: tela cheia.
+  Q, W, E e R podem ser usados durante a recuperação do ataque básico, cortando ela.</p>
+  <p class="ajuda">A cor do boneco avisa o golpe que vem (<b>azul</b> círculo, <b>amarelo</b> saturno, <b>verde</b> linha), e o vermelho no chão mostra a área conforme o modo escolhido no painel. Ele escolhe pela distância: <b>perto</b>, círculo; <b>média</b>, saturno (fique na faixa entre o centro e o anel); <b>longe</b>, linha (saia para o lado).</p>
+  <p class="ajuda" id="aviso-foco"><b>Clique na arena</b> antes de usar o teclado. Se as teclas forem para outro lugar, clique de novo nela.</p>
+  <div id="palco">
+    <canvas id="tela3d" width="960" height="640" aria-hidden="true"></canvas>
+    <canvas id="tela" width="1920" height="1280" tabindex="0"></canvas>
+    <p id="erro3d" class="ajuda" hidden></p>
+    <button id="sair-cheia" type="button" hidden>Sair da tela cheia (F)</button>
+  </div>
+  <div class="barra">
+    <span>Tempo: <strong id="tempo">0.0 s</strong></span>
+    <span>Acertos: <strong id="acertos">0</strong></span>
+    <span>Golpes levados: <strong id="levados">0</strong></span>
+    <button id="recomecar" type="button">Recomeçar (Enter)</button>
+    <button id="tela-cheia" type="button">Tela cheia (F)</button>
+    <span>Aparos certos: <strong id="aparos">0</strong></span>
+  </div>
+  <details open>
+    <summary>Painel de ajuste (vale na hora, sem recomeçar)</summary>
+    <div class="ajustes" id="ajustes"></div>
+    <div class="barra" style="margin-top:12px">
+      <label class="marcar" for="modo">Área do golpe no chão:
+        <select id="modo">
+          <option value="completa">Completa (desde o início)</option>
+          <option value="parcial">Parcial (aparece no fim do aviso)</option>
+          <option value="escondida">Escondida (só a cor do boneco)</option>
+        </select>
+      </label>
+      <label class="marcar" for="camera">Câmera:
+        <select id="camera">
+          <option value="perto">Perto (acompanha a luta)</option>
+          <option value="inteira">Arena inteira (parada)</option>
+        </select>
+      </label>
+      <label class="marcar"><input type="checkbox" id="cancelar"> Mover cancela o preparo</label>
+      <button id="padrao" type="button">Voltar aos valores iniciais</button>
+    </div>
+  </details>
+</main>
+
+<!-- three.js desenha a cena 3D (precisa de internet na primeira vez). chao.js traz a imagem do piso; sem ele, o piso vira lajes simples. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="chao.js"></script>
+<script>
+if (!window.THREE) {
+  const aviso = document.getElementById("erro3d"); aviso.hidden = false;
+  aviso.textContent = "Não foi possível carregar a parte 3D. Confira a internet e recarregue a página.";
+}
+// ===== Números do protótipo (metros e segundos) =====
+const PADRAO = {
+  // Personagem
+  velJogador: 5.5,      // m/s
+  vidaJogador: 5,
+  // Ataque básico (com alvo, não erra)
+  preparoAtaque: 0.25,  // s parado antes do tiro sair
+  recupAtaque: 0.20,    // s parado depois do tiro (Q, W e E podem cortar)
+  alcance: 6,           // m
+  velProjetil: 20,      // m/s
+  danoAA: 2,
+  // Q: tiro mirado
+  preparoQ: 0.20, recupQ: 0.15, alcanceQ: 9, velQ: 24, larguraQ: 0.5, danoQ: 10, recargaQ: 5,
+  // W: tiro mirado que marca
+  preparoW: 0.25, recupW: 0.15, alcanceW: 8, velW: 18, larguraW: 0.6, danoW: 4, recargaW: 8,
+  duracaoMarca: 5, cargasMarca: 3, danoMarca: 15,
+  // E: avanço
+  distE: 4, velE: 25, recupE: 0.10, recargaE: 6,
+  // R: aparo. Janela curta; se o golpe do boneco cair dentro dela, é anulado e o boneco fica atordoado
+  janelaAparo: 0.25, recupAparo: 0.5, recargaAparo: 12, atordoamento: 1.5,
+  // Boneco
+  velBoneco: 4.0,       // m/s
+  vidaBoneco: 120,
+  raioGolpe: 2.6,       // m
+  preparoGolpe: 0.70,   // s de aviso
+  recupGolpe: 0.90,     // s em que o boneco fica parado depois do golpe
+  // Saturno: círculo no centro + anel em volta; seguro só na faixa entre os dois
+  roscaNucleo: 1.4, roscaInterno: 3.0, roscaExterno: 5.0, preparoRosca: 0.90, velBonecoRosca: 2.0, recargaRosca: 3.0,
+  // Linha: mirada onde você está quando começa; fugir reto pela linha acerta
+  linhaDistMin: 5.5, linhaComprimento: 14, linhaLargura: 1.4, preparoLinha: 0.80, recargaLinha: 2.5,
+  // Aviso: a cor do boneco diz qual golpe vem; a área no chão pode ser escondida
+  modoAviso: "parcial", // "completa", "parcial" ou "escondida"
+  mostrarEm: 0.6,       // no modo parcial, a área aparece depois desta fração do aviso
+};
+const COR_GOLPE = { circulo: "#3d55e8", rosca: "#f0c419", linha: "#2fc46a" };
+const COR_MARCA = "#c77dff";
+const AJUSTES = [
+  ["#", "Personagem e ataque básico"],
+  ["velJogador", "Velocidade do jogador (m/s)", 2, 10, 0.1],
+  ["vidaJogador", "Vida do jogador (golpes)", 1, 10, 1],
+  ["preparoAtaque", "Ataque básico: preparo (s)", 0, 0.8, 0.01],
+  ["recupAtaque", "Ataque básico: recuperação (s)", 0, 0.8, 0.01],
+  ["alcance", "Ataque básico: alcance (m)", 2, 14, 0.5],
+  ["velProjetil", "Ataque básico: velocidade do tiro (m/s)", 5, 40, 1],
+  ["danoAA", "Ataque básico: dano", 0, 20, 1],
+  ["#", "Q: tiro mirado"],
+  ["preparoQ", "Q: preparo (s)", 0, 0.8, 0.01],
+  ["recupQ", "Q: recuperação (s)", 0, 0.8, 0.01],
+  ["alcanceQ", "Q: alcance (m)", 2, 16, 0.5],
+  ["velQ", "Q: velocidade (m/s)", 5, 50, 1],
+  ["larguraQ", "Q: largura (m)", 0.1, 2, 0.05],
+  ["danoQ", "Q: dano", 0, 50, 1],
+  ["recargaQ", "Q: recarga (s)", 0, 20, 0.5],
+  ["#", "W: tiro que marca"],
+  ["preparoW", "W: preparo (s)", 0, 0.8, 0.01],
+  ["recupW", "W: recuperação (s)", 0, 0.8, 0.01],
+  ["alcanceW", "W: alcance (m)", 2, 16, 0.5],
+  ["velW", "W: velocidade (m/s)", 5, 50, 1],
+  ["larguraW", "W: largura (m)", 0.1, 2, 0.05],
+  ["danoW", "W: dano do tiro", 0, 50, 1],
+  ["recargaW", "W: recarga (s)", 0, 20, 0.5],
+  ["duracaoMarca", "Marca: duração (s)", 1, 15, 0.5],
+  ["cargasMarca", "Marca: ataques básicos para explodir", 1, 6, 1],
+  ["danoMarca", "Marca: dano da explosão", 0, 80, 1],
+  ["#", "E: avanço"],
+  ["distE", "E: distância (m)", 1, 10, 0.5],
+  ["velE", "E: velocidade (m/s)", 5, 60, 1],
+  ["recupE", "E: recuperação (s)", 0, 0.8, 0.01],
+  ["recargaE", "E: recarga (s)", 0, 20, 0.5],
+  ["#", "R: aparo"],
+  ["janelaAparo", "R: janela do aparo (s)", 0.05, 1, 0.01],
+  ["recupAparo", "R: recuperação se errar (s)", 0, 1.5, 0.05],
+  ["recargaAparo", "R: recarga (s)", 0, 30, 0.5],
+  ["atordoamento", "R: atordoamento do boneco ao aparar (s)", 0, 4, 0.1],
+  ["#", "Boneco"],
+  ["vidaBoneco", "Vida do boneco", 20, 400, 5],
+  ["velBoneco", "Velocidade do boneco (m/s)", 1, 9, 0.1],
+  ["raioGolpe", "Círculo: tamanho (m)", 1, 5, 0.1],
+  ["preparoGolpe", "Círculo: aviso (s)", 0.2, 1.5, 0.05],
+  ["recupGolpe", "Recuperação do boneco (s)", 0, 2, 0.05],
+  ["roscaNucleo", "Saturno: raio do círculo central (m)", 0, 4, 0.1],
+  ["roscaInterno", "Saturno: início do anel (m)", 0.5, 6, 0.1],
+  ["roscaExterno", "Saturno: fim do anel (m)", 2, 9, 0.1],
+  ["preparoRosca", "Saturno: aviso (s)", 0.2, 2, 0.05],
+  ["velBonecoRosca", "Saturno: velocidade andando (m/s)", 0, 6, 0.1],
+  ["recargaRosca", "Saturno: recarga (s)", 0, 10, 0.5],
+  ["linhaDistMin", "Linha: usa a partir de (m)", 2, 14, 0.5],
+  ["linhaComprimento", "Linha: comprimento (m)", 4, 24, 0.5],
+  ["linhaLargura", "Linha: largura (m)", 0.4, 4, 0.1],
+  ["preparoLinha", "Linha: aviso (s)", 0.2, 2, 0.05],
+  ["recargaLinha", "Linha: recarga (s)", 0, 10, 0.5],
+  ["mostrarEm", "Modo parcial: área aparece em (fração do aviso)", 0, 1, 0.05],
+];
+const C = { ...PADRAO };
+const LARG = 24, ALT = 16;           // arena em metros
+const RAIO_J = 0.45, RAIO_B = 0.9;   // tamanhos
+const DT = 1 / 60;                   // passo fixo da simulação
+const BUFFER = 0.2;                  // comando guardado enquanto ocupado (s)
+
+// ===== Estado =====
+let s;
+function novoJogo() {
+  s = {
+    tempo: 0, fim: null,
+    j: { x: 6, y: ALT / 2, vida: C.vidaJogador, alvo: null, acao: null, flash: 0, perseguindo: false, rec: { q: 0, w: 0, e: 0, r: 0 }, olhar: 1, aparoFlash: 0 },
+    b: { x: 18, y: ALT / 2, vida: C.vidaBoneco, estado: "perseguir", golpe: null, t: 0, flash: 0, golpeFlash: 0, recRosca: 1.5, recLinha: 1.5, dx: 1, dy: 0, marca: 0, cargas: 0, explosao: 0 },
+    tiros: [], aaGuardado: 0, habGuardada: null, alvoGuardado: null,
+    acertos: 0, levados: 0, aparos: 0,
+  };
+}
+novoJogo();
+
+const dist = (ax, ay, bx, by) => Math.hypot(ax - bx, ay - by);
+const limitar = (v, a, b) => Math.max(a, Math.min(b, v));
+const tempos = (tipo) => ({
+  aa: [C.preparoAtaque, C.recupAtaque], q: [C.preparoQ, C.recupQ], w: [C.preparoW, C.recupW], e: [0, C.recupE], r: [0, C.recupAparo],
+}[tipo]);
+const RECARGA = { q: () => C.recargaQ, w: () => C.recargaW, e: () => C.recargaE, r: () => C.recargaAparo };
+const HABS = ["q", "w", "e", "r"];
+
+// ===== Comandos vindos do mouse e do teclado =====
+function comandoMover(x, y) {
+  const j = s.j;
+  j.perseguindo = false;
+  if (j.acao) {
+    if (j.acao.fase === "preparo" && document.getElementById("cancelar").checked) { j.acao = null; j.alvo = { x, y }; }
+    else s.alvoGuardado = { x, y };
+    return;
+  }
+  j.alvo = { x, y };
+}
+function comandoParar() {
+  // Para de andar e esquece ordens guardadas; uma ação já começada vai até o fim
+  const j = s.j;
+  j.alvo = null; j.perseguindo = false; s.alvoGuardado = null; s.aaGuardado = 0; s.habGuardada = null; direitoSegurado = false;
+}
+function comandoAtacar() {
+  const j = s.j;
+  if (j.acao) { s.aaGuardado = BUFFER; return; }
+  if (dist(j.x, j.y, s.b.x, s.b.y) - RAIO_B <= C.alcance) iniciarAA();
+  else { j.perseguindo = true; j.alvo = null; } // anda até ficar no alcance
+}
+function iniciarAA() {
+  const j = s.j, b = s.b;
+  const d = dist(j.x, j.y, b.x, b.y) || 1;
+  j.acao = { tipo: "aa", fase: "preparo", t: 0, dx: (b.x - j.x) / d, dy: (b.y - j.y) / d };
+  j.alvo = null; j.perseguindo = false; s.alvoGuardado = null;
+}
+function comandoHabilidade(tipo, x, y) {
+  const j = s.j;
+  if (j.rec[tipo] > 0) return;
+  if (j.acao) {
+    // cancelamento de animação: habilidade corta a recuperação do ataque básico
+    const podeCortar = j.acao.tipo === "aa" && j.acao.fase === "recuperacao";
+    if (!podeCortar) { s.habGuardada = { tipo, x, y, t: 0.4 }; return; }
+  }
+  const dx = x - j.x, dy = y - j.y, d = Math.hypot(dx, dy) || 1;
+  j.acao = { tipo, fase: tipo === "e" || tipo === "r" ? "ativo" : "preparo", t: 0, dx: dx / d, dy: dy / d };
+  j.rec[tipo] = RECARGA[tipo]();
+  j.alvo = null; j.perseguindo = false; s.alvoGuardado = null; s.habGuardada = null;
+}
+function disparar(a) {
+  const j = s.j, ox = j.x + a.dx * RAIO_J, oy = j.y + a.dy * RAIO_J;
+  if (a.tipo === "aa") s.tiros.push({ tipo: "aa", x: ox, y: oy });
+  else if (a.tipo === "q") s.tiros.push({ tipo: "q", x: ox, y: oy, dx: a.dx, dy: a.dy, percorrido: 0, alcance: C.alcanceQ, vel: C.velQ, raio: C.larguraQ / 2 });
+  else if (a.tipo === "w") s.tiros.push({ tipo: "w", x: ox, y: oy, dx: a.dx, dy: a.dy, percorrido: 0, alcance: C.alcanceW, vel: C.velW, raio: C.larguraW / 2 });
+}
+function processarFila() {
+  const j = s.j;
+  if (s.habGuardada) { const h = s.habGuardada; s.habGuardada = null; comandoHabilidade(h.tipo, h.x, h.y); }
+  else if (s.aaGuardado > 0) { s.aaGuardado = 0; comandoAtacar(); }
+  else if (s.alvoGuardado) { j.alvo = s.alvoGuardado; s.alvoGuardado = null; }
+}
+
+// ===== Simulação (60 passos por segundo) =====
+function causarDano(n) { const b = s.b; b.vida -= n; b.flash = 0.12; s.acertos += 1; }
+
+function passo() {
+  if (s.fim) return;
+  s.tempo += DT;
+  const j = s.j, b = s.b;
+
+  // Recargas e comandos guardados
+  for (const k of HABS) j.rec[k] = Math.max(0, j.rec[k] - DT);
+  s.aaGuardado = Math.max(0, s.aaGuardado - DT);
+  if (s.habGuardada) { s.habGuardada.t -= DT; if (s.habGuardada.t <= 0) s.habGuardada = null; }
+  // Habilidade guardada pode cortar a recuperação do ataque básico assim que ela começa
+  if (s.habGuardada && j.acao && j.acao.tipo === "aa" && j.acao.fase === "recuperacao") {
+    const h = s.habGuardada; s.habGuardada = null; comandoHabilidade(h.tipo, h.x, h.y);
+  }
+
+  // Jogador
+  if (j.acao) {
+    const a = j.acao, [prep, recup] = tempos(a.tipo);
+    a.t += DT;
+    if (a.fase === "preparo" && a.t >= prep) { disparar(a); a.fase = "recuperacao"; a.t = 0; }
+    else if (a.fase === "ativo" && a.tipo === "e") {
+      const p = C.velE * DT; j.x += a.dx * p; j.y += a.dy * p;
+      if (a.t >= C.distE / C.velE) { a.fase = "recuperacao"; a.t = 0; }
+    }
+    else if (a.fase === "ativo" && a.tipo === "r" && a.t >= C.janelaAparo) { a.fase = "recuperacao"; a.t = 0; } // errou o aparo: fica preso na recuperação
+    else if (a.fase === "recuperacao" && a.t >= recup) { j.acao = null; processarFila(); }
+    if (j.acao && j.acao.tipo !== "r") j.olhar = j.acao.dx >= 0 ? 1 : -1;
+    j.andando = false;
+  } else if (j.perseguindo) {
+    const d = dist(j.x, j.y, b.x, b.y);
+    if (d - RAIO_B <= C.alcance) iniciarAA();
+    else { const p = C.velJogador * DT; j.x += (b.x - j.x) / d * p; j.y += (b.y - j.y) / d * p; j.olhar = b.x >= j.x ? 1 : -1; j.andando = true; }
+  } else if (j.alvo) {
+    const dx = j.alvo.x - j.x, dy = j.alvo.y - j.y, d = Math.hypot(dx, dy), p = C.velJogador * DT;
+    if (d <= p) { j.x = j.alvo.x; j.y = j.alvo.y; j.alvo = null; }
+    else { j.x += dx / d * p; j.y += dy / d * p; }
+    if (Math.abs(dx) > 0.01) j.olhar = dx >= 0 ? 1 : -1;
+    j.andando = true;
+  } else j.andando = false;
+
+  // Boneco
+  const dJB = dist(j.x, j.y, b.x, b.y) || 0.001;
+  b.recRosca = Math.max(0, b.recRosca - DT); b.recLinha = Math.max(0, b.recLinha - DT);
+  if (b.marca > 0) { b.marca = Math.max(0, b.marca - DT); if (b.marca === 0) b.cargas = 0; }
+  const andarAte = (vel) => { const p = vel * DT; b.x += (j.x - b.x) / dJB * p; b.y += (j.y - b.y) / dJB * p; };
+  if (b.estado === "perseguir") {
+    // Escolhe o golpe pela distância: perto = círculo, média = saturno, longe = linha
+    const comecar = (golpe) => { b.estado = "preparo"; b.golpe = golpe; b.t = 0; };
+    if (dJB <= C.raioGolpe * 0.75) comecar("circulo");
+    else if (b.recRosca <= 0 && dJB < C.roscaExterno * 0.9) { comecar("rosca"); b.recRosca = C.recargaRosca; }
+    else if (b.recLinha <= 0 && dJB >= C.linhaDistMin) {
+      comecar("linha"); b.recLinha = C.recargaLinha;
+      b.dx = (j.x - b.x) / dJB; b.dy = (j.y - b.y) / dJB; // mira travada onde você está agora
+    }
+    else andarAte(C.velBoneco);
+  } else {
+    b.t += DT;
+    if (b.estado === "preparo") {
+      const aviso = { circulo: C.preparoGolpe, rosca: C.preparoRosca, linha: C.preparoLinha }[b.golpe];
+      if (b.golpe === "rosca") andarAte(C.velBonecoRosca);
+      if (b.t >= aviso) {
+        b.golpeFlash = 0.3;
+        const d = dist(j.x, j.y, b.x, b.y);
+        let acertou = false;
+        if (b.golpe === "circulo") acertou = d < C.raioGolpe + RAIO_J;
+        else if (b.golpe === "rosca") acertou = d - RAIO_J < C.roscaNucleo || (d + RAIO_J > C.roscaInterno && d - RAIO_J < C.roscaExterno);
+        else {
+          const px = j.x - b.x, py = j.y - b.y;
+          const ao_longo = limitar(px * b.dx + py * b.dy, 0, C.linhaComprimento);
+          acertou = dist(j.x, j.y, b.x + b.dx * ao_longo, b.y + b.dy * ao_longo) < C.linhaLargura / 2 + RAIO_J;
+        }
+        const aparando = j.acao && j.acao.tipo === "r" && j.acao.fase === "ativo";
+        if (acertou && aparando) {
+          // aparo certo: golpe anulado, jogador livre na hora, boneco atordoado
+          j.acao = null; j.aparoFlash = 0.4; s.aparos += 1;
+          b.estado = "atordoado"; b.t = 0;
+        } else {
+          if (acertou) { j.vida -= 1; s.levados += 1; j.flash = 0.3; }
+          b.estado = "recuperacao"; b.t = 0;
+        }
+      }
+    } else if (b.estado === "recuperacao" && b.t >= C.recupGolpe) { b.estado = "perseguir"; b.golpe = null; b.t = 0; }
+    else if (b.estado === "atordoado" && b.t >= C.atordoamento) { b.estado = "perseguir"; b.golpe = null; b.t = 0; }
+  }
+
+  // Corpos não se atravessam
+  const d2 = dist(j.x, j.y, b.x, b.y), min = RAIO_J + RAIO_B;
+  if (d2 < min && d2 > 0) { const e = (min - d2); j.x += (j.x - b.x) / d2 * e; j.y += (j.y - b.y) / d2 * e; }
+  j.x = limitar(j.x, RAIO_J, LARG - RAIO_J); j.y = limitar(j.y, RAIO_J, ALT - RAIO_J);
+  b.x = limitar(b.x, RAIO_B, LARG - RAIO_B); b.y = limitar(b.y, RAIO_B, ALT - RAIO_B);
+
+  // Tiros
+  for (const t of s.tiros) {
+    if (t.tipo === "aa") {
+      // segue o boneco: o ataque básico não erra
+      const d = dist(t.x, t.y, b.x, b.y) || 0.001, p = C.velProjetil * DT;
+      t.x += (b.x - t.x) / d * p; t.y += (b.y - t.y) / d * p;
+      if (d < RAIO_B + 0.15 + p) {
+        t.morto = true; causarDano(C.danoAA);
+        if (b.marca > 0) {
+          b.cargas += 1;
+          if (b.cargas >= C.cargasMarca) { causarDano(C.danoMarca); b.marca = 0; b.cargas = 0; b.explosao = 0.35; }
+        }
+      }
+    } else {
+      const p = t.vel * DT;
+      t.x += t.dx * p; t.y += t.dy * p; t.percorrido += p;
+      if (dist(t.x, t.y, b.x, b.y) < RAIO_B + t.raio) {
+        t.morto = true;
+        if (t.tipo === "q") causarDano(C.danoQ);
+        else { causarDano(C.danoW); b.marca = C.duracaoMarca; b.cargas = 0; }
+      }
+      else if (t.percorrido >= t.alcance) t.morto = true;
+    }
+  }
+  s.tiros = s.tiros.filter(t => !t.morto);
+
+  j.flash = Math.max(0, j.flash - DT); b.flash = Math.max(0, b.flash - DT); j.aparoFlash = Math.max(0, j.aparoFlash - DT);
+  b.golpeFlash = Math.max(0, b.golpeFlash - DT); b.explosao = Math.max(0, b.explosao - DT);
+  if (b.vida <= 0) s.fim = "venceu";
+  else if (j.vida <= 0) s.fim = "perdeu";
+}
+
+// ===== Desenho em 3D (three.js) =====
+// As regras do jogo acima não mudaram. Aqui o mundo (x, y em metros) vira uma cena 3D: x fica igual, y vira a
+// profundidade (z) e a altura é nova. A câmera é alta e fixa, mostrando a arena inteira.
+// Três camadas: a cena 3D (tela3d), um desenho plano colado no chão (áreas de golpe, mira, alcance)
+// e um desenho por cima de tudo (barras de vida, recargas, fim de jogo).
+const tela = document.getElementById("tela"), hud = tela.getContext("2d");
+const tela3d = document.getElementById("tela3d");
+const VL = 960, VA = 640; // tamanho lógico do desenho por cima
+hud.scale(tela.width / VL, tela.height / VA);
+const cor = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const CORES = { arena: cor("--arena"), grade: cor("--grade"), texto: cor("--texto"), fraco: cor("--texto-fraco"), jog: cor("--jogador"), perigo: cor("--perigo"), prep: cor("--preparo") };
+const FONTE = cor("--fonte");
+let mouse = { x: 0, y: 0 };
+
+const cor3 = hex => new THREE.Color(hex).convertSRGBToLinear();
+const mat = (hex, o = {}) => new THREE.MeshStandardMaterial({ color: cor3(hex), roughness: 0.85, metalness: 0, ...o });
+function malha(geo, material, x, y, z, pai) {
+  const m = new THREE.Mesh(geo, material); m.position.set(x, y, z); m.castShadow = true; m.receiveShadow = true;
+  if (pai) pai.add(m); return m;
+}
+
+const renderizador = new THREE.WebGLRenderer({ canvas: tela3d, antialias: true });
+renderizador.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderizador.setSize(VL, VA, false);
+renderizador.outputEncoding = THREE.sRGBEncoding;
+renderizador.toneMapping = THREE.ACESFilmicToneMapping;
+renderizador.toneMappingExposure = 1.0;
+renderizador.shadowMap.enabled = true;
+renderizador.shadowMap.type = THREE.PCFSoftShadowMap;
+const cena = new THREE.Scene();
+cena.background = cor3("#090b10");
+
+// Câmera alta, em perspectiva. Dois modos (escolhidos no painel): perto, acompanhando a luta, ou parada mostrando a arena inteira.
+const camera = new THREE.PerspectiveCamera(30, VL / VA, 1, 200);
+const CAM = { inclinacao: 50 * Math.PI / 180, distPerto: 18, distInteira: 40, foco: new THREE.Vector3(6, 0, ALT / 2), modo: "perto" };
+(function medirArenaInteira() {
+  // distância em que a arena inteira cabe na tela
+  const foco = new THREE.Vector3(LARG / 2, 0, ALT / 2 + 0.7), v = new THREE.Vector3();
+  const pontos = [[0, 0, 0], [LARG, 0, 0], [0, 0, ALT], [LARG, 0, ALT], [0, 2.8, 0], [LARG, 2.8, 0]];
+  for (let d = 15; d < 90; d += 0.25) {
+    camera.position.set(foco.x, Math.sin(CAM.inclinacao) * d, foco.z + Math.cos(CAM.inclinacao) * d);
+    camera.lookAt(foco); camera.updateMatrixWorld();
+    CAM.distInteira = d;
+    if (pontos.every(p => { v.set(p[0], p[1], p[2]).project(camera); return Math.abs(v.x) < 0.95 && Math.abs(v.y) < 0.93; })) break;
+  }
+})();
+const focoAlvo = new THREE.Vector3();
+let distCamera = CAM.distPerto;
+function moverCamera(naHora) {
+  const j = s.j, b = s.b;
+  if (CAM.modo === "inteira") focoAlvo.set(LARG / 2, 0, ALT / 2 + 0.7);
+  else {
+    // olha para o jogador, puxando um pouco na direção do boneco para os dois aparecerem
+    let dx = (b.x - j.x) * 0.45, dy = (b.y - j.y) * 0.45; const d = Math.hypot(dx, dy), max = 3.5;
+    if (d > max) { dx *= max / d; dy *= max / d; }
+    focoAlvo.set(j.x + dx, 0, j.y + dy + 0.5);
+  }
+  const distAlvo = CAM.modo === "inteira" ? CAM.distInteira : CAM.distPerto, q = naHora ? 1 : 0.07;
+  CAM.foco.lerp(focoAlvo, q); distCamera += (distAlvo - distCamera) * q;
+  camera.position.set(CAM.foco.x, Math.sin(CAM.inclinacao) * distCamera, CAM.foco.z + Math.cos(CAM.inclinacao) * distCamera);
+  camera.lookAt(CAM.foco); camera.updateMatrixWorld();
+}
+moverCamera(true);
+
+// Luz: céu suave + um sol que faz sombra + duas lamparinas no fundo
+cena.add(new THREE.HemisphereLight(cor3("#b9c9ff"), cor3("#2a2622"), 0.7));
+const sol = new THREE.DirectionalLight(cor3("#fff0dc"), 1.05);
+sol.position.set(LARG / 2 - 9, 22, ALT / 2 + 7); sol.target.position.set(LARG / 2, 0, ALT / 2);
+sol.castShadow = true; sol.shadow.mapSize.set(2048, 2048); sol.shadow.bias = -0.0004; sol.shadow.normalBias = 0.03;
+Object.assign(sol.shadow.camera, { left: -17, right: 17, top: 14, bottom: -14, near: 1, far: 60 });
+cena.add(sol, sol.target);
+
+// ----- Arena -----
+const ESC_CHAO = 80; // pixels por metro da textura do piso
+const telaPiso = document.createElement("canvas"); telaPiso.width = LARG * ESC_CHAO; telaPiso.height = ALT * ESC_CHAO;
+const texPiso = new THREE.CanvasTexture(telaPiso); texPiso.encoding = THREE.sRGBEncoding;
+texPiso.anisotropy = renderizador.capabilities.getMaxAnisotropy();
+(function pintarPiso() {
+  // enquanto a arte não carrega (ou se faltar): lajes simples
+  const c = telaPiso.getContext("2d"), L = 2 * ESC_CHAO;
+  c.fillStyle = "#2b2f38"; c.fillRect(0, 0, telaPiso.width, telaPiso.height);
+  for (let i = 0; i * L < telaPiso.width; i++) for (let k = 0; k * L < telaPiso.height; k++) {
+    const tom = 44 + ((i * 73 + k * 37 + i * k) % 5) * 4;
+    c.fillStyle = `rgb(${tom},${tom + 4},${tom + 12})`; c.fillRect(i * L + 3, k * L + 3, L - 6, L - 6);
+  }
+  if (!window.CHAO3D) return;
+  const img = new Image();
+  img.onload = () => {
+    // a arte tem 4 variações de ladrilho lado a lado; uma variação sorteada (sempre a mesma) por ladrilho
+    const fw = img.height, lado = fw; // 80 px por metro, igual à textura
+    for (let i = 0; i * lado < telaPiso.width; i++) for (let k = 0; k * lado < telaPiso.height; k++)
+      c.drawImage(img, ((i * 73 + k * 37 + i * k) % 4) * fw, 0, fw, fw, i * lado, k * lado, lado, lado);
+    texPiso.needsUpdate = true;
+  };
+  img.src = window.CHAO3D;
+})();
+const piso = new THREE.Mesh(new THREE.PlaneGeometry(LARG, ALT), new THREE.MeshStandardMaterial({ map: texPiso, roughness: 0.92 }));
+piso.rotation.x = -Math.PI / 2; piso.position.set(LARG / 2, 0, ALT / 2); piso.receiveShadow = true; cena.add(piso);
+const fora = new THREE.Mesh(new THREE.PlaneGeometry(140, 110), mat("#14171d", { roughness: 1 }));
+fora.rotation.x = -Math.PI / 2; fora.position.set(LARG / 2, -0.03, ALT / 2); fora.receiveShadow = true; cena.add(fora);
+const pedra = mat("#4a4f5c", { roughness: 0.95, flatShading: true }), pedraEscura = mat("#353945", { roughness: 0.95, flatShading: true });
+malha(new THREE.BoxGeometry(LARG + 1.6, 1.3, 0.8), pedra, LARG / 2, 0.65, -0.4, cena);          // fundo
+malha(new THREE.BoxGeometry(0.8, 1.3, ALT + 0.8), pedra, -0.4, 0.65, ALT / 2 - 0.4, cena);      // esquerda
+malha(new THREE.BoxGeometry(0.8, 1.3, ALT + 0.8), pedra, LARG + 0.4, 0.65, ALT / 2 - 0.4, cena); // direita
+malha(new THREE.BoxGeometry(LARG + 1.6, 0.3, 0.8), pedra, LARG / 2, 0.15, ALT + 0.4, cena);     // frente, baixa para não tampar o jogo
+for (const [x, z, alt] of [[-0.4, -0.4, 2.3], [LARG + 0.4, -0.4, 2.3], [-0.4, ALT + 0.4, 0.7], [LARG + 0.4, ALT + 0.4, 0.7]]) {
+  malha(new THREE.BoxGeometry(1.3, alt, 1.3), pedraEscura, x, alt / 2, z, cena);
+  if (alt > 1) {
+    const chama = new THREE.Mesh(new THREE.OctahedronGeometry(0.28), new THREE.MeshBasicMaterial({ color: cor3("#ffe9c4") }));
+    chama.position.set(x, alt + 0.45, z); cena.add(chama);
+    const luz = new THREE.PointLight(cor3("#ffdcae"), 1.1, 16, 2); luz.position.set(x + (x < 0 ? 1 : -1), alt + 0.6, z + 1); cena.add(luz);
+  }
+}
+
+// ----- Desenho plano colado no chão: áreas de golpe, mira, alcance, destino -----
+const GE = 64; // pixels por metro
+const telaChao = document.createElement("canvas"); telaChao.width = LARG * GE; telaChao.height = ALT * GE;
+const g = telaChao.getContext("2d");
+const texChao = new THREE.CanvasTexture(telaChao); texChao.encoding = THREE.sRGBEncoding;
+texChao.generateMipmaps = false; texChao.minFilter = THREE.LinearFilter;
+const camadaChao = new THREE.Mesh(new THREE.PlaneGeometry(LARG, ALT),
+  new THREE.MeshBasicMaterial({ map: texChao, transparent: true, depthWrite: false, toneMapped: false }));
+camadaChao.rotation.x = -Math.PI / 2; camadaChao.position.set(LARG / 2, 0.025, ALT / 2); camadaChao.renderOrder = 1; cena.add(camadaChao);
+
+function circulo(x, y, r, preencher, tracar, larg = 3) {
+  g.beginPath(); g.arc(x * GE, y * GE, r * GE, 0, Math.PI * 2);
+  if (preencher) { g.fillStyle = preencher; g.fill(); }
+  if (tracar) { g.strokeStyle = tracar; g.lineWidth = larg; g.stroke(); }
+}
+function arco(x, y, r, frac, c) {
+  g.beginPath(); g.arc(x * GE, y * GE, r * GE, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * frac);
+  g.strokeStyle = c; g.lineWidth = 6; g.stroke();
+}
+function linhaMira(x, y, dx, dy, L, c) {
+  g.strokeStyle = c; g.lineWidth = 3; g.beginPath();
+  g.moveTo(x * GE, y * GE); g.lineTo((x + dx * L) * GE, (y + dy * L) * GE); g.stroke();
+}
+function desenharChao() {
+  const j = s.j, b = s.b;
+  g.clearRect(0, 0, telaChao.width, telaChao.height);
+  // alcance do ataque básico
+  g.setLineDash([10, 12]); circulo(j.x, j.y, C.alcance + RAIO_B, null, "rgba(120,185,255,0.38)", 2); g.setLineDash([]);
+  // destino do movimento
+  const alvo = j.alvo || s.alvoGuardado;
+  if (alvo) {
+    const pulso = 0.22 + 0.05 * Math.sin(performance.now() / 110);
+    circulo(alvo.x, alvo.y, pulso, null, CORES.jog, 3); circulo(alvo.x, alvo.y, 0.06, CORES.jog);
+  }
+  // área do golpe do boneco (vermelho é só para isso)
+  const forma = (frac, preencher, tracar) => {
+    g.beginPath();
+    if (b.golpe === "circulo") g.arc(b.x * GE, b.y * GE, C.raioGolpe * frac * GE, 0, Math.PI * 2);
+    else if (b.golpe === "rosca") {
+      const ext = C.roscaInterno + (C.roscaExterno - C.roscaInterno) * frac;
+      g.arc(b.x * GE, b.y * GE, ext * GE, 0, Math.PI * 2);
+      g.moveTo((b.x + C.roscaInterno) * GE, b.y * GE);
+      g.arc(b.x * GE, b.y * GE, C.roscaInterno * GE, 0, Math.PI * 2, true);
+      if (C.roscaNucleo > 0) {
+        g.moveTo((b.x + C.roscaNucleo * frac) * GE, b.y * GE);
+        g.arc(b.x * GE, b.y * GE, C.roscaNucleo * frac * GE, 0, Math.PI * 2);
+      }
+    } else {
+      const nx = -b.dy, ny = b.dx, w = C.linhaLargura / 2, L = C.linhaComprimento * frac;
+      g.moveTo((b.x + nx * w) * GE, (b.y + ny * w) * GE);
+      g.lineTo((b.x + nx * w + b.dx * L) * GE, (b.y + ny * w + b.dy * L) * GE);
+      g.lineTo((b.x - nx * w + b.dx * L) * GE, (b.y - ny * w + b.dy * L) * GE);
+      g.lineTo((b.x - nx * w) * GE, (b.y - ny * w) * GE);
+      g.closePath();
+    }
+    if (preencher) { g.fillStyle = preencher; g.fill("evenodd"); }
+    if (tracar) { g.strokeStyle = tracar; g.lineWidth = 3; g.stroke(); }
+  };
+  if (b.estado === "preparo") {
+    const aviso = { circulo: C.preparoGolpe, rosca: C.preparoRosca, linha: C.preparoLinha }[b.golpe];
+    const frac = Math.min(1, b.t / aviso);
+    const mostrar = C.modoAviso === "completa" || (C.modoAviso === "parcial" && frac >= C.mostrarEm);
+    if (mostrar) { forma(1, "rgba(255,70,70,0.16)", CORES.perigo); forma(frac, "rgba(255,70,70,0.36)"); }
+  }
+  // no impacto a área pisca inteira, em qualquer modo, para o jogador aprender o formato
+  if (b.golpeFlash > 0 && b.golpe) forma(1, `rgba(255,80,80,${0.75 * b.golpeFlash / 0.3})`);
+  // marca do W no chão, em volta do boneco
+  if (b.marca > 0) circulo(b.x, b.y, RAIO_B + 0.35, null, COR_MARCA, 5);
+  // preparo e recuperação do jogador (arco em volta dele) e linha de mira
+  if (j.acao) {
+    const a = j.acao, [prep, recup] = tempos(a.tipo);
+    if (a.fase === "preparo") arco(j.x, j.y, RAIO_J + 0.25, prep > 0 ? Math.min(1, a.t / prep) : 1, CORES.prep);
+    else if (a.fase === "recuperacao") arco(j.x, j.y, RAIO_J + 0.25, recup > 0 ? Math.min(1, a.t / recup) : 1, "rgba(170,180,200,0.8)");
+    if (a.fase === "preparo") {
+      if (a.tipo === "aa") linhaMira(j.x, j.y, a.dx, a.dy, dist(j.x, j.y, b.x, b.y), "rgba(255,209,102,0.6)");
+      else if (a.tipo === "q") linhaMira(j.x, j.y, a.dx, a.dy, C.alcanceQ, "rgba(255,255,255,0.6)");
+      else if (a.tipo === "w") linhaMira(j.x, j.y, a.dx, a.dy, C.alcanceW, "rgba(199,125,255,0.7)");
+    }
+  }
+  // clarão do aparo certo
+  if (j.aparoFlash > 0) circulo(j.x, j.y, RAIO_J + 0.3 + (0.4 - j.aparoFlash) * 5, null, `rgba(155,231,255,${j.aparoFlash / 0.4})`, 6);
+  texChao.needsUpdate = true;
+}
+
+// ----- Jogador: atirador de capuz azul-claro com besta de mão. A frente do modelo é o eixo +X. -----
+const J3 = (() => {
+  const raiz = new THREE.Group(), corpo = new THREE.Group(); raiz.add(corpo); cena.add(raiz);
+  const azul = mat("#8ec6ee", { roughness: 0.75 }), couro = mat("#3b455c"), escuro = mat("#262b38"), pele = mat("#dcab86"),
+    madeira = mat("#7a5433"), metal = mat("#aab4c4", { roughness: 0.35, metalness: 0.7 });
+  const pernas = [-1, 1].map(lado => {
+    const p = new THREE.Group(); p.position.set(0, 0.64, lado * 0.11); corpo.add(p);
+    malha(new THREE.CylinderGeometry(0.09, 0.075, 0.6, 10), escuro, 0, -0.3, 0, p);
+    malha(new THREE.BoxGeometry(0.24, 0.12, 0.15), madeira, 0.04, -0.58, 0, p);
+    return p;
+  });
+  const tronco = new THREE.Group(); corpo.add(tronco);
+  malha(new THREE.CylinderGeometry(0.2, 0.25, 0.56, 12), couro, 0, 0.94, 0, tronco);
+  malha(new THREE.CylinderGeometry(0.25, 0.36, 0.34, 12), azul, 0, 0.62, 0, tronco);        // saia da túnica
+  malha(new THREE.CylinderGeometry(0.265, 0.265, 0.07, 12), madeira, 0, 0.78, 0, tronco);   // cinto
+  malha(new THREE.CylinderGeometry(0.15, 0.31, 0.2, 12), azul, 0, 1.2, 0, tronco);          // gola do capuz
+  malha(new THREE.SphereGeometry(0.2, 16, 12), azul, -0.02, 1.41, 0, tronco);               // capuz
+  malha(new THREE.SphereGeometry(0.125, 12, 10), pele, 0.095, 1.37, 0, tronco);             // rosto
+  const ponta = malha(new THREE.ConeGeometry(0.12, 0.3, 10), azul, -0.2, 1.42, 0, tronco); ponta.rotation.z = Math.PI / 2 + 0.35;
+  const aljava = malha(new THREE.CylinderGeometry(0.07, 0.06, 0.5, 8), madeira, -0.27, 1.0, 0.08, tronco); aljava.rotation.set(0.3, 0, 0.35);
+  const capa = new THREE.Group(); capa.position.set(-0.02, 1.24, 0); tronco.add(capa);
+  const pano = malha(new THREE.CylinderGeometry(0.27, 0.44, 0.9, 14, 1, true, Math.PI * 1.5 - 1.15, 2.3), azul, 0, -0.45, 0, capa);
+  pano.material = azul.clone(); pano.material.side = THREE.DoubleSide;
+  const besta = new THREE.Group(); besta.position.set(0.1, 1.06, 0); tronco.add(besta);
+  for (const lado of [-1, 1]) {
+    const braco = malha(new THREE.CylinderGeometry(0.06, 0.055, 0.42, 8), couro, 0.16, 0.0, lado * 0.17, besta);
+    braco.rotation.set(0, lado * 0.35, -Math.PI / 2);
+  }
+  malha(new THREE.BoxGeometry(0.56, 0.06, 0.07), madeira, 0.42, 0, 0, besta);
+  for (const lado of [-1, 1]) {
+    const arcoB = malha(new THREE.BoxGeometry(0.05, 0.04, 0.3), metal, 0.62, 0, lado * 0.14, besta); arcoB.rotation.y = lado * 0.3;
+  }
+  const virote = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.42, 6), new THREE.MeshBasicMaterial({ color: cor3("#ffd166") }));
+  virote.rotation.z = -Math.PI / 2; virote.position.set(0.5, 0.05, 0); besta.add(virote);
+  const escudo = new THREE.Mesh(new THREE.SphereGeometry(0.85, 24, 16),
+    new THREE.MeshBasicMaterial({ color: cor3("#9be7ff"), transparent: true, opacity: 0.3, depthWrite: false, blending: THREE.AdditiveBlending }));
+  escudo.position.y = 0.85; raiz.add(escudo);
+  const mats = [azul, couro, escuro, pele, madeira, metal, pano.material];
+  return { raiz, corpo, tronco, pernas, capa, besta, virote, escudo, mats, angulo: 0, ux: 6, uy: ALT / 2, coice: 0, faseAnt: null };
+})();
+
+// ----- Boneco: golem de barro rachado, amarrado a duas estacas de madeira. O corpo inteiro troca de cor no aviso. -----
+const B3 = (() => {
+  const raiz = new THREE.Group(), corpo = new THREE.Group(); raiz.add(corpo); cena.add(raiz);
+  const barro = new THREE.MeshStandardMaterial({ color: cor3("#b5673f"), roughness: 1, flatShading: true });
+  const madeira = mat("#6b4a2e", { flatShading: true }), corda = mat("#bfa272");
+  const olhos = new THREE.MeshBasicMaterial({ color: cor3("#1a1210") });
+  const tronco = malha(new THREE.IcosahedronGeometry(0.95, 1), barro, 0, 1.0, 0, corpo); tronco.scale.set(1, 1.05, 1);
+  malha(new THREE.IcosahedronGeometry(0.45, 1), barro, 0.05, 2.08, 0, corpo);
+  for (const lado of [-1, 1]) {
+    malha(new THREE.IcosahedronGeometry(0.42, 0), barro, 0.05, 1.5, lado * 0.72, corpo);
+    malha(new THREE.IcosahedronGeometry(0.36, 0), barro, 0.25, 0.42, lado * 0.5, corpo);
+    const estaca = malha(new THREE.CylinderGeometry(0.13, 0.15, 1.9, 7), madeira, -0.15, 0.95, lado * 1.02, corpo); estaca.rotation.x = lado * -0.08;
+    malha(new THREE.ConeGeometry(0.13, 0.3, 7), madeira, -0.15, 2.04, lado * 1.1, corpo);
+    const olho = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), olhos); olho.position.set(0.44, 2.14, lado * 0.16); corpo.add(olho);
+  }
+  for (const [y, r] of [[0.85, 1.0], [1.2, 0.99]]) {
+    const volta = malha(new THREE.TorusGeometry(r, 0.045, 6, 28), corda, 0, y, 0, corpo); volta.rotation.x = Math.PI / 2; volta.scale.set(1, 1.08, 1);
+  }
+  // estrelas do atordoamento
+  const estrelas = new THREE.Group(); estrelas.position.y = 2.9; raiz.add(estrelas);
+  const matEstrela = new THREE.MeshBasicMaterial({ color: cor3("#f4f1ff") });
+  for (let i = 0; i < 3; i++) { const e = new THREE.Mesh(new THREE.OctahedronGeometry(0.14), matEstrela); const a = i * Math.PI * 2 / 3; e.position.set(Math.cos(a) * 0.6, 0, Math.sin(a) * 0.6); estrelas.add(e); }
+  // cargas da marca do W: bolinhas acima da cabeça, uma por ataque básico necessário
+  const cargas = [];
+  const matCheia = new THREE.MeshBasicMaterial({ color: cor3(COR_MARCA) }), matVazia = new THREE.MeshBasicMaterial({ color: cor3("#3b2a4d") });
+  for (let i = 0; i < 6; i++) { const c = new THREE.Mesh(new THREE.SphereGeometry(0.15, 12, 8), matVazia); cena.add(c); cargas.push(c); }
+  const explosao = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 14),
+    new THREE.MeshBasicMaterial({ color: cor3(COR_MARCA), transparent: true, opacity: 0.5, depthWrite: false, blending: THREE.AdditiveBlending }));
+  cena.add(explosao);
+  const luz = new THREE.PointLight(0xffffff, 0, 9, 2); luz.position.y = 1.6; raiz.add(luz);
+  return { raiz, corpo, barro, olhos, estrelas, cargas, matCheia, matVazia, explosao, luz, angulo: Math.PI, corAlvo: new THREE.Color(), brilho: new THREE.Color() };
+})();
+const COR_BARRO = { normal: cor3("#b5673f"), recuperacao: cor3("#5c3826"), atordoado: cor3("#8a8794"), atingido: cor3("#ffffff"),
+  circulo: cor3(COR_GOLPE.circulo), rosca: cor3(COR_GOLPE.rosca), linha: cor3(COR_GOLPE.linha) };
+const PRETO = new THREE.Color(0, 0, 0);
+
+// ----- Tiros: virote amarelo (ataque básico), virote claro grande (Q), esfera roxa (W) -----
+const MODELO_TIRO = {
+  aa: () => { const m = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.55, 6), new THREE.MeshBasicMaterial({ color: cor3("#ffd166") })); m.rotation.z = -Math.PI / 2; return m; },
+  q: () => { const m = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.09, 1.0, 8), new THREE.MeshBasicMaterial({ color: cor3("#eaf6ff") })); m.rotation.z = -Math.PI / 2; return m; },
+  w: () => new THREE.Mesh(new THREE.SphereGeometry(0.2, 14, 10), new THREE.MeshBasicMaterial({ color: cor3("#d9a6ff") })),
+};
+const COR_HALO = { aa: "#ffb93b", q: "#7fc8ff", w: COR_MARCA }, RAIO_HALO = { aa: 0.16, q: 0.3, w: 0.38 };
+const tiros3 = { aa: [], q: [], w: [] };
+function tiro3(tipo, i) {
+  const lista = tiros3[tipo];
+  while (lista.length <= i) {
+    const grupo = new THREE.Group(); grupo.add(MODELO_TIRO[tipo]());
+    const halo = new THREE.Mesh(new THREE.SphereGeometry(RAIO_HALO[tipo], 12, 8),
+      new THREE.MeshBasicMaterial({ color: cor3(COR_HALO[tipo]), transparent: true, opacity: 0.45, depthWrite: false, blending: THREE.AdditiveBlending }));
+    if (tipo !== "w") halo.scale.set(2.4, 1, 1);
+    grupo.add(halo); cena.add(grupo); lista.push(grupo);
+  }
+  return lista[i];
+}
+
+// gira aos poucos pelo caminho mais curto
+function girarPara(atual, alvo, quanto) {
+  let d = alvo - atual; while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2;
+  return atual + d * quanto;
+}
+const vTela = new THREE.Vector3();
+function naTela(x, altura, y) { // ponto do mundo -> posição no desenho por cima
+  vTela.set(x, altura, y).project(camera);
+  return { x: (vTela.x + 1) / 2 * VL, y: (1 - vTela.y) / 2 * VA };
+}
+function barraVida(x, altura, y, frac, c, larg) {
+  const p = naTela(x, altura, y), h = 6;
+  hud.fillStyle = "rgba(10,12,18,0.8)"; hud.fillRect(p.x - larg / 2 - 1, p.y - 1, larg + 2, h + 2);
+  hud.fillStyle = c; hud.fillRect(p.x - larg / 2, p.y, larg * Math.max(0, frac), h);
+}
+
+function desenhar() {
+  const j = s.j, b = s.b, T = s.tempo, a0 = j.acao;
+  moverCamera(false);
+  // a câmera anda, então o ponto do chão embaixo do mouse muda mesmo com o mouse parado
+  mouse = mundoDoMouse();
+  if (direitoSegurado) { if (!j.acao) { j.alvo = dentro(mouse); j.perseguindo = false; } else s.alvoGuardado = dentro(mouse); }
+  desenharChao();
+
+  // ----- jogador -----
+  const moveu = Math.hypot(j.x - J3.ux, j.y - J3.uy);
+  if (a0 && a0.tipo !== "r") J3.angulo = girarPara(J3.angulo, Math.atan2(a0.dy, a0.dx), 0.5);
+  else if (!a0 && moveu > 0.004) J3.angulo = girarPara(J3.angulo, Math.atan2(j.y - J3.uy, j.x - J3.ux), 0.3);
+  J3.ux = j.x; J3.uy = j.y;
+  const andando = !a0 && j.andando, avancando = a0 && a0.tipo === "e" && a0.fase === "ativo";
+  const preparando = a0 && a0.fase === "preparo", aparando = a0 && a0.tipo === "r" && a0.fase === "ativo";
+  // coice da besta quando o tiro sai
+  const fase = a0 ? a0.tipo + a0.fase : null;
+  if (fase !== J3.faseAnt && a0 && a0.fase === "recuperacao" && a0.tipo !== "e" && a0.tipo !== "r") J3.coice = 1;
+  J3.faseAnt = fase; J3.coice *= 0.8;
+  J3.raiz.position.set(j.x, 0, j.y); J3.raiz.rotation.y = -J3.angulo;
+  const passada = Math.sin(T * 13);
+  J3.pernas[0].rotation.z = andando ? passada * 0.7 : avancando ? 0.9 : 0;
+  J3.pernas[1].rotation.z = andando ? -passada * 0.7 : avancando ? -0.5 : 0;
+  J3.tronco.position.y = andando ? Math.abs(Math.cos(T * 13)) * 0.05 : Math.sin(T * 2.2) * 0.012;
+  J3.corpo.rotation.z = avancando ? -0.5 : andando ? -0.1 : aparando ? 0.12 : 0;
+  J3.capa.rotation.z = avancando ? -1.0 : andando ? -0.3 + passada * 0.06 : -0.04;
+  const puxar = preparando ? Math.min(1, a0.t / (tempos(a0.tipo)[0] || 1)) : 0;
+  J3.besta.position.x = 0.1 - puxar * 0.07 - J3.coice * 0.14;
+  J3.besta.rotation.z = (andando ? -0.35 : 0) + J3.coice * 0.3;
+  J3.virote.visible = !!preparando;
+  J3.escudo.visible = !!aparando;
+  if (aparando) { const p = 1 + Math.sin(a0.t * 40) * 0.05; J3.escudo.scale.set(p, p, p); }
+  const dor = j.flash > 0 ? j.flash / 0.3 : 0;
+  for (const m of J3.mats) m.emissive.setRGB(dor * 0.9, dor * 0.12, dor * 0.1);
+
+  // ----- boneco -----
+  const anguloB = b.estado === "preparo" && b.golpe === "linha" ? Math.atan2(b.dy, b.dx)
+    : b.estado === "atordoado" || b.estado === "recuperacao" ? B3.angulo : Math.atan2(j.y - b.y, j.x - b.x);
+  B3.angulo = girarPara(B3.angulo, anguloB, 0.25);
+  B3.raiz.position.set(b.x, 0, b.y); B3.raiz.rotation.y = -B3.angulo;
+  const preparoB = b.estado === "preparo";
+  B3.corAlvo.copy(b.flash > 0 ? COR_BARRO.atingido : preparoB ? COR_BARRO[b.golpe] : b.estado === "recuperacao" ? COR_BARRO.recuperacao
+    : b.estado === "atordoado" ? COR_BARRO.atordoado : COR_BARRO.normal);
+  B3.barro.color.lerp(B3.corAlvo, b.flash > 0 || preparoB ? 0.6 : 0.2);
+  // no aviso o corpo também brilha na cor do golpe, e ilumina o chão em volta
+  const pulso = preparoB ? 0.22 + 0.12 * Math.sin(b.t * 22) : 0;
+  B3.brilho.copy(preparoB ? COR_BARRO[b.golpe] : b.flash > 0 ? COR_BARRO.atingido : PRETO).multiplyScalar(preparoB ? pulso : 0.35);
+  B3.barro.emissive.lerp(B3.brilho, 0.5);
+  B3.olhos.color.copy(preparoB ? COR_BARRO.atingido : b.estado === "atordoado" ? COR_BARRO.atordoado : PRETO);
+  B3.luz.color.copy(preparoB ? COR_BARRO[b.golpe] : PRETO); B3.luz.intensity = preparoB ? 2.2 : 0;
+  let ex = 1, ey = 1, incl = 0, pulo = 0, tremor = 0;
+  if (b.estado === "perseguir") { incl = Math.sin(T * 9) * 0.07; pulo = Math.abs(Math.sin(T * 9)) * 0.07; }
+  else if (preparoB) {
+    const aviso = { circulo: C.preparoGolpe, rosca: C.preparoRosca, linha: C.preparoLinha }[b.golpe], f = Math.min(1, b.t / aviso);
+    ey = 1 + f * 0.16; ex = 1 - f * 0.05; tremor = f * 0.035;
+    if (b.golpe === "rosca") { incl = Math.sin(T * 9) * 0.05; pulo = Math.abs(Math.sin(T * 9)) * 0.04; }
+  }
+  else if (b.estado === "atordoado") incl = 0.22 + Math.sin(T * 5) * 0.05;
+  if (b.golpeFlash > 0) { const f = b.golpeFlash / 0.3; ey = 1 - f * 0.28; ex = 1 + f * 0.2; }
+  B3.corpo.scale.set(ex, ey, ex); B3.corpo.rotation.x = incl;
+  B3.corpo.position.set(Math.sin(T * 67) * tremor, pulo, Math.cos(T * 53) * tremor);
+  B3.estrelas.visible = b.estado === "atordoado"; B3.estrelas.rotation.y = T * 5;
+  B3.cargas.forEach((c, i) => {
+    c.visible = b.marca > 0 && i < C.cargasMarca;
+    if (!c.visible) return;
+    c.material = i < b.cargas ? B3.matCheia : B3.matVazia;
+    c.position.set(b.x + (i - (C.cargasMarca - 1) / 2) * 0.48, 3.15 + Math.sin(T * 4 + i) * 0.05, b.y);
+  });
+  B3.explosao.visible = b.explosao > 0;
+  if (b.explosao > 0) {
+    const f = (0.35 - b.explosao) / 0.35, r = 1.1 + f * 2.2;
+    B3.explosao.position.set(b.x, 1.1, b.y); B3.explosao.scale.set(r, r, r); B3.explosao.material.opacity = 0.65 * (1 - f);
+  }
+
+  // ----- tiros -----
+  const usados = { aa: 0, q: 0, w: 0 };
+  for (const t of s.tiros) {
+    const m = tiro3(t.tipo, usados[t.tipo]++); m.visible = true; m.position.set(t.x, 1.05, t.y);
+    m.rotation.y = -(t.tipo === "aa" ? Math.atan2(b.y - t.y, b.x - t.x) : Math.atan2(t.dy, t.dx));
+  }
+  for (const k in tiros3) for (let i = usados[k]; i < tiros3[k].length; i++) tiros3[k][i].visible = false;
+
+  renderizador.render(cena, camera);
+
+  // ----- por cima: vida, recargas, fim de jogo -----
+  hud.clearRect(0, 0, VL, VA);
+  barraVida(b.x, 3.0, b.y, b.vida / C.vidaBoneco, CORES.perigo, 76);
+  barraVida(j.x, 1.95, j.y, j.vida / C.vidaJogador, CORES.jog, 50);
+  const tam = 44, y0 = VA - tam - 12;
+  HABS.forEach((k, i) => {
+    const x0 = 12 + i * (tam + 8), total = RECARGA[k](), r = j.rec[k];
+    hud.fillStyle = "rgba(17,20,27,0.85)"; hud.fillRect(x0, y0, tam, tam);
+    hud.strokeStyle = r > 0 ? CORES.grade : CORES.jog; hud.lineWidth = 2; hud.strokeRect(x0, y0, tam, tam);
+    if (r > 0 && total > 0) { hud.fillStyle = "rgba(138,147,166,0.35)"; const h = tam * r / total; hud.fillRect(x0, y0 + tam - h, tam, h); }
+    hud.textAlign = "center"; hud.textBaseline = "middle";
+    hud.fillStyle = r > 0 ? CORES.fraco : CORES.texto; hud.font = "600 18px " + FONTE;
+    hud.fillText(r > 0 ? r.toFixed(1) : k.toUpperCase(), x0 + tam / 2, y0 + tam / 2);
+  });
+  hud.textBaseline = "alphabetic";
+  if (s.fim) {
+    hud.fillStyle = "rgba(10,12,18,0.72)"; hud.fillRect(0, 0, VL, VA);
+    hud.fillStyle = CORES.texto; hud.textAlign = "center";
+    hud.font = "600 40px " + FONTE;
+    hud.fillText(s.fim === "venceu" ? "Venceu" : "Perdeu", VL / 2, VA / 2 - 10);
+    hud.font = "18px " + FONTE; hud.fillStyle = CORES.fraco;
+    hud.fillText(`${s.tempo.toFixed(1)} s · ${s.levados} golpes levados · Enter para recomeçar`, VL / 2, VA / 2 + 26);
+  }
+  document.getElementById("tempo").textContent = s.tempo.toFixed(1) + " s";
+  document.getElementById("acertos").textContent = s.acertos;
+  document.getElementById("levados").textContent = s.levados;
+  document.getElementById("aparos").textContent = s.aparos;
+}
+
+// ===== Laço com passo fixo =====
+let ultimo = performance.now(), acumulado = 0;
+function quadro(agora) {
+  acumulado += Math.min(0.25, (agora - ultimo) / 1000); ultimo = agora;
+  while (acumulado >= DT) { passo(); acumulado -= DT; }
+  desenhar(); requestAnimationFrame(quadro);
+}
+requestAnimationFrame(quadro);
+
+// ===== Entrada =====
+// O ponto do chão que está embaixo do mouse, visto pela câmera 3D
+const raioMouse = new THREE.Raycaster(), planoChao = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), pontoChao = new THREE.Vector3();
+const mouseTela = { x: -0.4, y: 0 }; // posição do mouse na tela, de -1 a 1
+function mundoDoMouse() {
+  raioMouse.setFromCamera(mouseTela, camera);
+  if (!raioMouse.ray.intersectPlane(planoChao, pontoChao)) return { ...mouse };
+  return { x: pontoChao.x, y: pontoChao.z };
+}
+function posMundo(e) {
+  const r = tela.getBoundingClientRect();
+  mouseTela.x = (e.clientX - r.left) / r.width * 2 - 1; mouseTela.y = 1 - (e.clientY - r.top) / r.height * 2;
+  return mundoDoMouse();
+}
+// destino de movimento sempre dentro da arena (a câmera também mostra o lado de fora)
+const dentro = p => ({ x: limitar(p.x, RAIO_J, LARG - RAIO_J), y: limitar(p.y, RAIO_J, ALT - RAIO_J) });
+let direitoSegurado = false;
+tela.addEventListener("contextmenu", e => e.preventDefault());
+tela.addEventListener("pointerdown", e => {
+  window.focus(); tela.focus({ preventScroll: true }); // teclado passa a vir para o jogo
+  const p = posMundo(e); mouse = p;
+  if (e.button === 2) { direitoSegurado = true; const d = dentro(p); comandoMover(d.x, d.y); }
+  else if (e.button === 0) comandoAtacar();
+});
+window.addEventListener("pointerup", e => { if (e.button === 2) direitoSegurado = false; });
+tela.addEventListener("pointermove", e => {
+  mouse = posMundo(e);
+  if (!direitoSegurado) return;
+  if (!s.j.acao) { s.j.alvo = dentro(mouse); s.j.perseguindo = false; }
+  else s.alvoGuardado = dentro(mouse);
+});
+window.addEventListener("keydown", e => {
+  if (["INPUT", "SELECT"].includes(e.target.tagName)) return;
+  const k = e.key.toLowerCase();
+  if (["a", "s", "r", "q", "w", "e", "enter", "f"].includes(k)) e.preventDefault();
+  if (e.repeat && k !== "s") return;
+  if (k === "f") alternarTelaCheia();
+  else if (k === "enter") novoJogo();
+  else if (k === "a") comandoAtacar();
+  else if (k === "s") comandoParar();
+  else if (HABS.includes(k)) comandoHabilidade(k, mouse.x, mouse.y);
+});
+document.getElementById("recomecar").addEventListener("click", novoJogo);
+
+// ===== Tela cheia =====
+// Tenta a tela cheia do navegador; se a página não puder (dentro de outra página), a arena ocupa a janela inteira.
+const palco = document.getElementById("palco"), botaoSair = document.getElementById("sair-cheia");
+const emTelaCheia = () => !!document.fullscreenElement || palco.classList.contains("cheia");
+function mostrarSair() { botaoSair.hidden = !emTelaCheia(); }
+async function alternarTelaCheia() {
+  if (emTelaCheia()) {
+    palco.classList.remove("cheia");
+    if (document.fullscreenElement) { try { await document.exitFullscreen(); } catch (_) {} }
+  } else {
+    try { await palco.requestFullscreen(); } catch (_) { palco.classList.add("cheia"); }
+  }
+  mostrarSair(); tela.focus({ preventScroll: true });
+}
+document.getElementById("tela-cheia").addEventListener("click", alternarTelaCheia);
+botaoSair.addEventListener("click", alternarTelaCheia);
+document.addEventListener("fullscreenchange", () => { mostrarSair(); tela.focus({ preventScroll: true }); });
+window.addEventListener("keydown", e => { if (e.key === "Escape" && palco.classList.contains("cheia")) { palco.classList.remove("cheia"); mostrarSair(); } });
+
+// Mostra se o jogo está recebendo o teclado
+const avisoFoco = document.getElementById("aviso-foco");
+const atualizarFoco = () => {
+  const ok = document.hasFocus() && document.activeElement === tela;
+  avisoFoco.innerHTML = ok ? "Teclado ativo no jogo." : "<b>Clique na arena</b> antes de usar o teclado. Se as teclas forem para outro lugar, clique de novo nela.";
+  tela.style.borderColor = ok ? CORES.jog : "";
+};
+tela.addEventListener("focus", atualizarFoco); tela.addEventListener("blur", atualizarFoco);
+window.addEventListener("blur", atualizarFoco); window.addEventListener("focus", atualizarFoco);
+
+// ===== Painel de ajuste =====
+const caixa = document.getElementById("ajustes");
+function montarPainel() {
+  caixa.innerHTML = "";
+  for (const [chave, nome, min, max, passo] of AJUSTES) {
+    if (chave === "#") { const h = document.createElement("h2"); h.textContent = nome; caixa.appendChild(h); continue; }
+    const d = document.createElement("div"); d.className = "ajuste";
+    d.innerHTML = `<label for="aj-${chave}"><span>${nome}</span><span id="v-${chave}">${C[chave]}</span></label>
+      <input type="range" id="aj-${chave}" min="${min}" max="${max}" step="${passo}" value="${C[chave]}">`;
+    d.querySelector("input").addEventListener("input", ev => {
+      C[chave] = parseFloat(ev.target.value);
+      document.getElementById("v-" + chave).textContent = C[chave];
+    });
+    caixa.appendChild(d);
+  }
+}
+montarPainel();
+const seletorModo = document.getElementById("modo");
+seletorModo.value = C.modoAviso;
+seletorModo.addEventListener("change", () => { C.modoAviso = seletorModo.value; });
+document.getElementById("camera").addEventListener("change", ev => { CAM.modo = ev.target.value; tela.focus({ preventScroll: true }); });
+document.getElementById("padrao").addEventListener("click", () => { Object.assign(C, PADRAO); montarPainel(); seletorModo.value = C.modoAviso; });
+</script>
