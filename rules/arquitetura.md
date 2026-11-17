@@ -14,17 +14,15 @@
 1. **Simulação separada do desenho.** O código em `src/simulacao/` contém as regras do jogo e não conhece tela, som nem entrada do usuário. Ele deve poder rodar em testes automáticos, sem navegador.
 2. **Passo de tempo fixo.** A simulação avança 60 vezes por segundo, sempre com o mesmo intervalo, independente da taxa de quadros do desenho.
 3. **Unidades do mundo.** A simulação usa metros e segundos, nunca pixels. A conversão para a tela acontece só em `src/apresentacao/`.
-4. **Toda ação tem três fases: preparo, ativo e recuperação.** Vale para as habilidades do personagem e para os ataques do chefe. O preparo do chefe é o aviso do golpe e sempre precisa ser visível.
+4. **Toda ação tem três fases: preparo, ativo e recuperação.** Vale para as habilidades do personagem e para os ataques do chefe. O personagem pode cancelar a animação de recuperação com o comando de mover ou com uma habilidade. O preparo do chefe é o aviso do golpe e sempre precisa ser visível.
 5. **Ações descritas em dados.** Nenhum número de jogo fica escrito no código. Habilidades e ataques do chefe são entradas em `dados/` com a duração das fases, o alcance e os efeitos.
 6. **Controle convertido em intenções.** `src/controle/` transforma mouse e teclado em comandos ("mover para este ponto", "usar Q nesta direção"). A simulação só recebe comandos.
-7. **Eventos para a parte sensorial.** A simulação emite eventos ("acertou", "aparou", "postura quebrada") e `src/apresentacao/` responde com efeitos visuais e som. Efeitos nunca alteram as regras.
+7. **Eventos para a parte sensorial.** A simulação emite eventos ("acertou", "aparou") e `src/apresentacao/` responde com efeitos visuais e som. Efeitos nunca alteram as regras.
 8. **Painel de ajuste.** `src/painel/` permite alterar os valores de `dados/` com o jogo rodando. Todo valor novo em `dados/` deve aparecer no painel.
-
-Arte não é prioridade: formas geométricas até o autor dizer o contrário.
 
 ```
 src/
-├── simulacao/     regras: movimento, ações, postura, chefe
+├── simulacao/     regras: movimento, ações chefe
 ├── controle/      mouse e teclado viram intenções
 ├── apresentacao/  desenho, som e efeitos
 └── painel/        ajuste dos números com o jogo rodando
