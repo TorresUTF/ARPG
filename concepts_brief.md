@@ -5,7 +5,7 @@
 
 ## Overview
 
-O protótipo de combate (`prototipos/kiting`) tem um personagem, um chefe e uma arena, e o autor o considera divertido. A proposta é transformar esse combate em um RPG de ação 2D visto de cima, para dar ao jogador um motivo de continuar jogando: explorar, montar builds e avançar numa história.
+O protótipo de combate (`prototipos/kiting`) tem um personagem, um chefe e uma arena, e o autor o considera divertido. A proposta é transformar esse combate em um RPG de ação 3D visto de cima, para dar ao jogador um motivo de continuar jogando: explorar, montar builds e avançar numa história.
 
 A hipótese revisada:
 
