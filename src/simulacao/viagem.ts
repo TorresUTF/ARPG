@@ -79,6 +79,7 @@ export function lugarPerto(v: Viagem, mapa: Mapa, dados: Dados): Lugar | undefin
 
 /** Vai em linha reta até o ponto. Não procura caminho: achar a passagem no relevo é com o jogador. */
 export function irPara(v: Viagem, mapa: Mapa, ponto: Vetor): void {
+  // TODO: a margem de 1 m na borda do mapa (aqui e em avancarViagem) deve vir de dados/ (rules/arquitetura.md, regra 5).
   v.destino = { x: limitar(ponto.x, 1, mapa.largura - 1), y: limitar(ponto.y, 1, mapa.altura - 1) };
 }
 

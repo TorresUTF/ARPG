@@ -22,6 +22,7 @@ export interface OpcoesDaLuta {
 }
 
 /** A sala usada quando a luta é criada sem uma (testes, treino). */
+// TODO: mover a vida da sala de treino para dados/ (rules/arquitetura.md, regra 5).
 export const SALA_DE_TREINO: Sala = { vidaChefe: 60, reto: 0, area: 0, leque: 0 };
 
 export function criarMundo(dados: Dados, opcoes: OpcoesDaLuta = {}): Mundo {

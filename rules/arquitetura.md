@@ -18,7 +18,7 @@
 5. **Ações descritas em dados.** Nenhum número de jogo fica escrito no código. Habilidades e ataques do chefe são entradas em `dados/` com a duração das fases, o alcance e os efeitos.
 6. **Controle convertido em intenções.** `src/controle/` transforma mouse e teclado em comandos ("mover para este ponto", "usar Q nesta direção"). A simulação só recebe comandos.
 7. **Eventos para a parte sensorial.** A simulação emite eventos ("acertou", "aparou") e `src/apresentacao/` responde com efeitos visuais e som. Efeitos nunca alteram as regras.
-8. **Painel de ajuste.** `src/painel/` permite alterar os valores de `dados/` com o jogo rodando. Todo valor novo em `dados/` deve aparecer no painel.
+8. **Painel de ajuste.** `src/painel/` permite alterar os valores de `dados/` com o jogo rodando. Todo número de ajuste novo em `dados/` deve aparecer no painel. `dados/mapa.json` (relevo e lugares) é conteúdo, não número de ajuste, e fica de fora.
 
 ```
 src/
