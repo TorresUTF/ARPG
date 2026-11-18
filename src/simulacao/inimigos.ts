@@ -132,6 +132,7 @@ function disparar(mundo: Mundo, m: Inimigo, mira: Vetor): void {
   };
   if (m.tipo === "reto") bala(0);
   else if (m.tipo === "leque") {
+    // TODO: o número de disparos do leque (3) deve vir de dados/ (rules/arquitetura.md, regra 5).
     bala(-disparo.aberturaLeque);
     bala(0);
     bala(disparo.aberturaLeque);
@@ -154,6 +155,7 @@ export function atualizarDisparos(mundo: Mundo): void {
       atingirJogador(mundo, dono(t.dono), horda.dano);
       continue;
     }
+    // TODO: a margem de 1 m fora da arena, onde o disparo some, deve vir de dados/ (rules/arquitetura.md, regra 5).
     const fora = t.pos.x < -1 || t.pos.y < -1 || t.pos.x > arena.largura + 1 || t.pos.y > arena.altura + 1;
     if (t.percorrido < disparo.alcance && !fora) restantes.push(t);
   }
