@@ -11,12 +11,12 @@
 
 ## Tecnologia
 
-- Jogo web em 2D, visto de cima, rodando no navegador.
+- Jogo web visto de cima, rodando no navegador. As regras são em 2D (metros no chão); o desenho é em 3D.
 - Linguagem: TypeScript.
-- Desenho: Canvas 2D do próprio navegador, sem motor de jogo.
+- Desenho: three.js (biblioteca de desenho 3D, instalada pelo `npm install`, sem motor de jogo). Vida, recargas e textos são desenhados num Canvas 2D por cima da cena 3D.
+- O three.js só pode ser usado em `src/apresentacao/`. A simulação não sabe que o desenho é 3D.
 - Ferramentas: Vite para rodar o jogo com recarga automática, Vitest para os testes da simulação.
 - Sem serviços pagos e sem dependências além das necessárias.
-- O visual pode migrar para 3D no futuro trocando apenas `src/apresentacao/`. Não antecipe isso no código.
 
 ## Comandos
 

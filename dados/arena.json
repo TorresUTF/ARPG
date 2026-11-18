@@ -1,6 +1,10 @@
 {
   "largura": 24,
   "altura": 16,
-  "inicioJogadorX": 6,
-  "inicioJogadorY": 8
+  "inicioJogadorX": 4,
+  "inicioJogadorY": 8,
+  "inicioChefeX": 19,
+  "inicioHordaXMin": 13,
+  "inicioHordaXMax": 22,
+  "margemHorda": 1.5
 }

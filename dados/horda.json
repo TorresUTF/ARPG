@@ -1,0 +1,15 @@
+{
+  "raio": 0.45,
+  "vida": 4,
+  "velocidade": 3,
+  "distancia": 7,
+  "folgaDisparo": 2,
+  "preparo": 0.6,
+  "ativo": 0,
+  "recuperacao": 0.5,
+  "recarga": 3,
+  "variacaoRecarga": 0.2,
+  "esperaInicial": 1,
+  "recargaAposAtordoado": 0.5,
+  "dano": 1
+}

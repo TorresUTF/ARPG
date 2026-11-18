@@ -1,0 +1,13 @@
+{
+  "preparo": 0.25,
+  "ativo": 0,
+  "recuperacao": 0.15,
+  "alcance": 8,
+  "velocidade": 18,
+  "largura": 0.6,
+  "dano": 4,
+  "recarga": 8,
+  "duracaoMarca": 5,
+  "cargas": 3,
+  "danoExplosao": 15
+}

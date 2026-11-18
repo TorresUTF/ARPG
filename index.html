@@ -5,23 +5,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ARPG</title>
     <style>
-      :root { color-scheme: dark; --fundo: #11141b; --texto: #dfe4ee; --fraco: #8a93a6; --borda: #2c3344; --destaque: #4da3ff; }
+      :root { color-scheme: dark; --fundo: #11141b; --arena: #171b24; --texto: #dfe4ee; --fraco: #8a93a6; --borda: #2c3344; --grade: #222838; --destaque: #4da3ff; }
       body { margin: 0; background: var(--fundo); color: var(--texto); font-family: "Segoe UI", system-ui, sans-serif; }
       main { max-width: 980px; margin: 0 auto; padding: 16px; display: grid; gap: 12px; }
       h1 { font-size: 18px; margin: 0; }
       p { margin: 0; color: var(--fraco); line-height: 1.5; }
       p b { color: var(--texto); }
-      canvas { width: 100%; height: auto; display: block; border: 1px solid var(--borda); border-radius: 6px; cursor: crosshair; outline: none; }
-      canvas:focus-visible { border-color: var(--destaque); }
+      canvas { width: 100%; height: auto; display: block; border: 1px solid var(--borda); border-radius: 6px; outline: none; }
+      #palco { display: grid; }
+      #palco canvas { grid-area: 1 / 1; }
+      #tela3d { background: var(--arena); }
+      #tela { background: transparent; position: relative; cursor: crosshair; touch-action: none; }
+      #palco.cheia, #palco:fullscreen { position: fixed; inset: 0; z-index: 50; background: #000; place-items: center; }
+      #palco.cheia canvas, #palco:fullscreen canvas { width: min(100vw, 150vh); border-radius: 0; border: 0; }
+      #sair-cheia { position: absolute; top: 12px; right: 12px; }
       .barra { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; color: var(--fraco); font-variant-numeric: tabular-nums; }
       .barra strong { color: var(--texto); }
-      button { font: inherit; background: #222838; color: var(--texto); border: 1px solid var(--borda); border-radius: 5px; padding: 6px 12px; cursor: pointer; }
+      .barra label { display: flex; gap: 8px; align-items: center; font-size: 13px; }
+      button, select { font: inherit; background: var(--grade); color: var(--texto); border: 1px solid var(--borda); border-radius: 5px; padding: 6px 12px; cursor: pointer; }
+      button:hover { border-color: var(--destaque); }
       details { border: 1px solid var(--borda); border-radius: 6px; padding: 10px 14px; }
       summary { cursor: pointer; font-weight: 600; }
       #ajustes { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px 24px; margin-top: 12px; }
       #ajustes h2 { grid-column: 1 / -1; font-size: 13px; margin: 6px 0 0; text-transform: uppercase; letter-spacing: .04em; }
       #ajustes > button { grid-column: 1 / -1; justify-self: start; }
-      .ajuste { display: grid; gap: 2px; }
+      .ajuste { display: grid; gap: 2px; min-width: 0; }
       .ajuste label { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--fraco); }
       .ajuste label span:last-child { color: var(--texto); }
       .ajuste input { width: 100%; accent-color: var(--destaque); }
@@ -29,17 +37,43 @@
   </head>
   <body>
     <main>
-      <h1>ARPG: base da luta</h1>
-      <p><b>Botão direito</b>: mover (pode segurar). <b>Botão esquerdo</b> ou <b>A</b>: ataque básico no inimigo mais perto do mouse (anel claro); se estiver longe, o personagem anda até o alcance. <b>S</b>: parar. <b>Enter</b>: recomeçar. Clique na arena antes de usar o teclado.</p>
-      <canvas id="tela" width="960" height="640" tabindex="0"></canvas>
+      <h1>ARPG</h1>
+      <p><b>No mapa:</b> <b>botão direito</b> move (pode segurar); o personagem vai reto e para no relevo, achar a passagem é com você. A névoa some por onde você passa. Cada lugar tem um <b>anel no chão</b>: é ali que se para. Um <b>?</b> piscando na névoa avisa que há algo perto. Em cima de uma <b>dungeon</b> ou do <b>chefe</b>, <b>Espaço</b> entra. Na <b>fogueira</b>, <b>Espaço</b> descansa: vida e poções cheias, vira o ponto de retorno e as emboscadas voltam. <b>Baú</b> abre ao encostar. <b>Emboscadas</b> ficam escondidas nas passagens estreitas e começam sozinhas. <b>1</b>: poção. Se morrer, você volta à última fogueira.</p>
+      <p><b>Na luta:</b> <b>botão direito</b> move. <b>Botão esquerdo</b> ou <b>A</b>: ataque básico no inimigo mais perto do mouse (anel claro). <b>Q</b>: tiro mirado. <b>W</b>: tiro que marca; mais 3 ataques básicos no marcado e a marca explode. <b>E</b>: avanço. <b>R</b>: aparo; anula o golpe que cair na janela curta e atordoa quem atacou. Mover ou usar habilidade corta a recuperação de uma ação, mas o próximo ataque básico só sai no tempo dele. <b>1</b>: poção (fica parado bebendo). <b>S</b>: parar. <b>Espaço</b>: voltar ao mapa quando a luta acaba. <b>F</b>: tela cheia.</p>
+      <p id="aviso-foco"><b>Clique na arena</b> antes de usar o teclado.</p>
+      <div id="palco">
+        <canvas id="tela3d" width="960" height="640" aria-hidden="true"></canvas>
+        <canvas id="tela" width="1920" height="1280" tabindex="0"></canvas>
+        <button id="sair-cheia" type="button" hidden>Sair da tela cheia (F)</button>
+      </div>
       <div class="barra">
-        <span>Tentativa: <strong id="tentativa">1</strong></span>
-        <span>Ação: <strong id="fase">livre</strong></span>
+        <span>Lugares descobertos: <strong id="descobertos">0</strong></span>
+        <span>Lutas vencidas: <strong id="limpos">0</strong></span>
+        <span>Baús: <strong id="baus">0</strong></span>
+        <span>Mortes: <strong id="mortes">0</strong></span>
+        <span>Tempo no mapa: <strong id="tempo">0 s</strong></span>
+        <span>Tempo em luta: <strong id="tempo-luta">0 s</strong></span>
         <span>Semente: <strong id="semente"></strong></span>
-        <button id="recomecar" type="button">Recomeçar (Enter)</button>
+        <button id="recomecar" type="button">Recomeçar o mapa</button>
+        <button id="tela-cheia" type="button">Tela cheia (F)</button>
       </div>
       <details open>
-        <summary>Painel de ajuste (vale na hora; os marcados com ↻ recomeçam a luta)</summary>
+        <summary>Painel de ajuste (vale na hora; os marcados com ↻ valem na próxima luta)</summary>
+        <div class="barra" style="margin-top: 12px">
+          <label for="modo-aviso">Área do golpe do golem:
+            <select id="modo-aviso">
+              <option value="completa">Completa (desde o início)</option>
+              <option value="parcial" selected>Parcial (aparece no fim do aviso)</option>
+              <option value="escondida">Escondida (só a cor do golem)</option>
+            </select>
+          </label>
+          <label for="modo-camera">Câmera na luta:
+            <select id="modo-camera">
+              <option value="perto">Perto (acompanha a luta)</option>
+              <option value="inteira">Arena inteira (parada)</option>
+            </select>
+          </label>
+        </div>
         <div id="ajustes"></div>
       </details>
     </main>
