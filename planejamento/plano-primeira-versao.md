@@ -1,6 +1,6 @@
 # Plano: primeira versão jogável
 
-**Status:** `TO-DO`
+**Status:** `DONE`
 
 Combinado com Gabriel em 10/11/2026. Projeto pessoal, sem prazo.
 
