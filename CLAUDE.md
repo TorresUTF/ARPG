@@ -16,6 +16,10 @@ Este arquivo é só um índice. As regras do projeto ficam em `rules/`: antes de
 Aplica-se a: todo o código do jogo em `src/` e às entradas de ações em `dados/`.
 Arquivo: `rules/arquitetura.md`
 
+### Regras gerais
+Aplica-se a: todo o projeto.
+Arquivo: `rules/geral.md`
+
 ### Pastas
 Aplica-se a: os arquivos e pastas de documentação e dados na raiz do projeto (`VISAO.md`, `TESTES.md`, `dados/`, `design/`, `prototipos/`).
 Arquivo: `rules/pastas.md`
