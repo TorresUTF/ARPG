@@ -1,0 +1,6 @@
+{
+  "raio": 0.9,
+  "velocidade": 4,
+  "recargaInicial": 1.5,
+  "mostrarAreaEm": 0.6
+}

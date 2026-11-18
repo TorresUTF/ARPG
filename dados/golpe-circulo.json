@@ -1,0 +1,8 @@
+{
+  "preparo": 0.7,
+  "ativo": 0,
+  "recuperacao": 0.9,
+  "raio": 2.6,
+  "usarAte": 0.75,
+  "dano": 1
+}

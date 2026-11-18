@@ -1,38 +1,45 @@
-// Gravação de uma luta: a semente e os comandos de cada passo.
-// Com ela, a mesma luta pode ser repetida de forma idêntica, para achar um problema.
+// Gravação de um jogo: a semente, os números e os comandos de cada passo.
+// Com ela, o mesmo jogo (mapa e lutas) pode ser repetido de forma idêntica, para achar um problema.
 import type { Comando } from "./comandos";
-import type { Dados } from "./dados";
-import { avancar, criarMundo, type Mundo } from "./mundo";
+import type { Dados, Mapa } from "./dados";
+import { avancarJogo, criarJogo, type Jogo } from "./jogo";
 
 export interface Gravacao {
   semente: number;
   dados: Dados;
+  mapa: Mapa;
   /** Só os passos que tiveram comandos. */
   comandos: { passo: number; comandos: Comando[] }[];
   totalDePassos: number;
 }
 
-export function iniciarGravacao(mundo: Mundo): Gravacao {
-  return { semente: mundo.semente, dados: structuredClone(mundo.dados), comandos: [], totalDePassos: 0 };
+export function iniciarGravacao(jogo: Jogo): Gravacao {
+  return {
+    semente: jogo.semente,
+    dados: structuredClone(jogo.dados),
+    mapa: structuredClone(jogo.mapa),
+    comandos: [],
+    totalDePassos: jogo.passo,
+  };
 }
 
-/** Avança o mundo um passo e anota os comandos na gravação. */
-export function avancarGravando(mundo: Mundo, gravacao: Gravacao, comandos: Comando[]): void {
-  avancar(mundo, comandos);
-  if (comandos.length > 0) gravacao.comandos.push({ passo: mundo.passo, comandos: structuredClone(comandos) });
-  gravacao.totalDePassos = mundo.passo;
+/** Avança o jogo um passo e anota os comandos na gravação. */
+export function avancarGravando(jogo: Jogo, gravacao: Gravacao, comandos: Comando[]): void {
+  avancarJogo(jogo, comandos);
+  if (comandos.length > 0) gravacao.comandos.push({ passo: jogo.passo, comandos: structuredClone(comandos) });
+  gravacao.totalDePassos = jogo.passo;
 }
 
-/** Refaz a luta inteira a partir da gravação. */
-export function reproduzir(gravacao: Gravacao): Mundo {
-  const mundo = criarMundo(structuredClone(gravacao.dados), gravacao.semente);
+/** Refaz o jogo inteiro a partir da gravação. */
+export function reproduzir(gravacao: Gravacao): Jogo {
+  const jogo = criarJogo(structuredClone(gravacao.dados), structuredClone(gravacao.mapa), gravacao.semente);
   let i = 0;
-  while (mundo.passo < gravacao.totalDePassos) {
+  while (jogo.passo < gravacao.totalDePassos) {
     const proximo = gravacao.comandos[i];
-    if (proximo && proximo.passo === mundo.passo + 1) {
-      avancar(mundo, proximo.comandos);
+    if (proximo && proximo.passo === jogo.passo + 1) {
+      avancarJogo(jogo, proximo.comandos);
       i += 1;
-    } else avancar(mundo, []);
+    } else avancarJogo(jogo, []);
   }
-  return mundo;
+  return jogo;
 }

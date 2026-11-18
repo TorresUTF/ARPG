@@ -1,0 +1,9 @@
+{
+  "velocidade": 14,
+  "raioVisao": 12,
+  "raioDica": 26,
+  "raioEmboscada": 5,
+  "raioLugar": 2.5,
+  "revelarAoVencer": 2.5,
+  "distanciaAoVoltar": 4
+}

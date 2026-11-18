@@ -1,0 +1,12 @@
+{
+  "preparo": 0.9,
+  "ativo": 0,
+  "recuperacao": 0.9,
+  "nucleo": 1.4,
+  "inicioAnel": 3,
+  "fimAnel": 5,
+  "velocidadeAndando": 2,
+  "recarga": 3,
+  "usarAte": 0.9,
+  "dano": 1
+}

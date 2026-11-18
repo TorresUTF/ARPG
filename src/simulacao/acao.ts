@@ -1,25 +1,65 @@
 // Toda ação passa por três fases: preparo, ativo e recuperação.
+// Vale para o personagem e para os golpes dos inimigos.
 // O tempo é contado em passos inteiros para que a duração seja exata e igual em qualquer computador.
-import type { FasesDeAcao } from "./dados";
+import type { TeclaHabilidade } from "./comandos";
+import type { Dados, FasesDeAcao } from "./dados";
+import type { NomeGolpe } from "./eventos";
 import { emPassos } from "./tempo";
 import type { Vetor } from "./vetor";
 
 export type Fase = "preparo" | "ativo" | "recuperacao";
 const ORDEM: Fase[] = ["preparo", "ativo", "recuperacao"];
 
+/** Nome da ação, ligado à entrada dela em dados/. "disparo" é o tiro dos inimigos da horda. */
+export type TipoAcao = "ataqueBasico" | TeclaHabilidade | "pocao" | NomeGolpe | "disparo";
+
 export interface AcaoEmCurso {
-  /** Nome da ação, igual ao nome da entrada em dados/ (por exemplo "ataqueBasico"). */
-  tipo: string;
+  tipo: TipoAcao;
   fase: Fase;
   /** Passos já vividos na fase atual. */
   passosNaFase: number;
   /** Inimigo escolhido, quando a ação tem alvo. */
   alvo?: number;
+  /** Direção da mira, travada quando a ação começa. */
   direcao: Vetor;
 }
 
-export function iniciarAcao(tipo: string, direcao: Vetor, alvo?: number): AcaoEmCurso {
+export function iniciarAcao(tipo: TipoAcao, direcao: Vetor, alvo?: number): AcaoEmCurso {
   return { tipo, fase: "preparo", passosNaFase: 0, alvo, direcao };
+}
+
+/** A duração das fases de cada ação, lida de dados/ na hora (o painel pode ter mudado). */
+export function fasesDe(dados: Dados, tipo: TipoAcao): FasesDeAcao {
+  switch (tipo) {
+    case "ataqueBasico":
+      return dados.ataqueBasico;
+    case "q":
+      return dados.tiroQ;
+    case "w":
+      return dados.marcaW;
+    case "e": {
+      // O avanço fica na fase ativa o tempo de percorrer a distância.
+      const { preparo, recuperacao, distancia, velocidade } = dados.avancoE;
+      return { preparo, ativo: velocidade > 0 ? distancia / velocidade : 0, recuperacao };
+    }
+    case "r":
+      return dados.aparoR;
+    case "pocao":
+      return dados.pocao;
+    case "circulo":
+      return dados.golpeCirculo;
+    case "saturno":
+      return dados.golpeSaturno;
+    case "linha":
+      return dados.golpeLinha;
+    case "disparo":
+      return dados.horda;
+  }
+}
+
+/** Passos que a ação inteira leva, do começo do preparo ao fim da recuperação. */
+export function passosTotais(fases: FasesDeAcao): number {
+  return emPassos(fases.preparo) + emPassos(fases.ativo) + emPassos(fases.recuperacao);
 }
 
 /**

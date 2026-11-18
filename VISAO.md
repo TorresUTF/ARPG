@@ -39,8 +39,9 @@ O chefe precisa poder ser superado, não apenas decorado. Para isso ele tem:
 
 ## Escopo da primeira versão
 
-Um personagem, quatro habilidades, um chefe, uma arena.
-Formas geométricas no lugar de arte até o combate estar divertido.
+Um personagem com quatro habilidades e um mapa para viajar: névoa que some por onde se passa,
+fogueiras para descansar, baús, emboscadas de hordas, masmorras e um chefe. As lutas acontecem numa arena.
+Formas geométricas simples, em 3D, no lugar de arte até o combate estar divertido.
 
 ## Ponto de partida do personagem
 
@@ -49,13 +50,13 @@ Um atirador de curto alcance:
 | Tecla | Habilidade | Função |
 |---|---|---|
 | Clique | Ataque básico à distância, com tempo de preparo | Ritmo do kiting |
-| Q | Projétil que marca o chefe | Marcas acumuladas quebram a postura |
-| W | Aparo de janela curta e recarga longa | A virada |
-| E | Avanço curto, com recarga reduzida por desvio no limite | Mobilidade que premia risco |
-| R | Rajada forte, que só compensa com a postura quebrada | Fecho do combo |
+| Q | Tiro mirado de dano alto | Punir uma abertura |
+| W | Tiro mirado que marca; ataques básicos no marcado explodem a marca | Recompensa por continuar atacando |
+| E | Avanço curto | Mobilidade e reposicionamento |
+| R | Aparo de janela curta e recarga longa; atordoa quem atacou | A virada |
 
-O ciclo esperado: kitar para acumular marcas, quebrar a postura, descarregar o combo,
-e usar o aparo quando tudo dá errado.
+O ciclo esperado: kitar com ataques básicos, marcar com W e explodir a marca,
+punir com Q, reposicionar com E e usar o aparo quando tudo dá errado.
 
 ## Como usar este documento para decidir
 

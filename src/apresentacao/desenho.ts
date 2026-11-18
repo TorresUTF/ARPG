@@ -1,130 +1,73 @@
-// Desenha o mundo no canvas com formas geométricas.
-import { progressoDaFase } from "../simulacao/acao";
-import type { Mundo } from "../simulacao/mundo";
-import { distancia, type Vetor } from "../simulacao/vetor";
-import type { Camera } from "./camera";
-import type { Efeitos } from "./efeitos";
+// Desenha o jogo: a cena 3D (mapa ou luta) embaixo e, por cima, um canvas 2D com vida, recargas e textos.
+// Só lê o estado da simulação; nada daqui volta para as regras.
+import * as THREE from "three";
+import { lugarPorId, type Jogo } from "../simulacao/jogo";
+import type { Vetor } from "../simulacao/vetor";
+import { CameraJogo } from "./camera3d";
+import { CenaLuta, type OpcoesLuta } from "./cenaLuta";
+import { CenaMapa } from "./cenaMapa";
+import { DURACAO, Efeitos } from "./efeitos";
 
-const COR = {
-  fundo: "#171b24",
-  grade: "#222838",
-  borda: "#2c3344",
-  jogador: "#4da3ff",
-  preparo: "#ffd166",
-  recuperacao: "#8a93a6",
-  boneco: "#c94a4a",
-  clarao: "#ffffff",
-  tiro: "#ffe9a8",
-  destino: "#4da3ff",
-  texto: "#dfe4ee",
-  fraco: "#8a93a6",
-};
+/** Tamanho lógico do desenho por cima, em pixels. */
+const VL = 960, VA = 640;
 
-export function desenhar(ctx: CanvasRenderingContext2D, cam: Camera, mundo: Mundo, efeitos: Efeitos, mouse: Vetor | null): void {
-  const { arena, personagem, boneco, ataqueBasico } = mundo.dados;
-  const p = (m: number) => cam.px(m);
+export class Desenho {
+  readonly efeitos: Efeitos;
+  readonly opcoes: OpcoesLuta = { camera: "perto", aviso: "parcial" };
+  private readonly renderizador: THREE.WebGLRenderer;
+  private readonly camera = new CameraJogo(VL / VA);
+  private readonly hud: CanvasRenderingContext2D;
+  private readonly luta: CenaLuta;
+  private readonly mapa: CenaMapa;
+  private jogo: Jogo;
 
-  ctx.fillStyle = "#000";
-  ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-  ctx.fillStyle = COR.fundo;
-  ctx.fillRect(0, 0, p(arena.largura), p(arena.altura));
-
-  // Grade de 1 m, para dar noção de distância.
-  ctx.strokeStyle = COR.grade;
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  for (let x = 1; x < arena.largura; x++) {
-    ctx.moveTo(p(x) + 0.5, 0);
-    ctx.lineTo(p(x) + 0.5, p(arena.altura));
-  }
-  for (let y = 1; y < arena.altura; y++) {
-    ctx.moveTo(0, p(y) + 0.5);
-    ctx.lineTo(p(arena.largura), p(y) + 0.5);
-  }
-  ctx.stroke();
-
-  const j = mundo.jogador;
-
-  // Alcance do ataque básico, bem discreto.
-  circulo(ctx, p(j.pos.x), p(j.pos.y), p(ataqueBasico.alcance + boneco.raio), null, "rgba(77,163,255,0.12)");
-
-  // Destino do movimento.
-  if (j.destino) {
-    ctx.strokeStyle = COR.destino;
-    ctx.lineWidth = 2;
-    const d = p(0.25);
-    ctx.beginPath();
-    ctx.moveTo(p(j.destino.x) - d, p(j.destino.y) - d);
-    ctx.lineTo(p(j.destino.x) + d, p(j.destino.y) + d);
-    ctx.moveTo(p(j.destino.x) + d, p(j.destino.y) - d);
-    ctx.lineTo(p(j.destino.x) - d, p(j.destino.y) + d);
-    ctx.stroke();
+  constructor(tela3d: HTMLCanvasElement, private readonly telaHud: HTMLCanvasElement, jogo: Jogo) {
+    this.jogo = jogo;
+    this.renderizador = new THREE.WebGLRenderer({ canvas: tela3d, antialias: true });
+    this.renderizador.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    this.renderizador.setSize(VL, VA, false);
+    this.renderizador.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderizador.shadowMap.enabled = true;
+    this.renderizador.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.hud = telaHud.getContext("2d")!;
+    this.hud.scale(telaHud.width / VL, telaHud.height / VA);
+    this.efeitos = new Efeitos((id) => lugarPorId(this.jogo, id)?.nome ?? id);
+    this.luta = new CenaLuta(this.renderizador);
+    this.mapa = new CenaMapa(this.renderizador, jogo.mapa, () => this.jogo.dados.viagem.raioLugar);
   }
 
-  // Inimigos (por enquanto, o boneco de treino).
-  const maisPerto = mouse
-    ? mundo.inimigos.reduce<(typeof mundo.inimigos)[number] | null>((m, i) => (!m || distancia(i.pos, mouse) < distancia(m.pos, mouse) ? i : m), null)
-    : null;
-  for (const i of mundo.inimigos) {
-    const x = p(i.pos.x), y = p(i.pos.y);
-    circulo(ctx, x, y, p(boneco.raio), efeitos.clarao.has(i.id) ? COR.clarao : COR.boneco, null);
-    // Anel claro: é nele que o clique esquerdo ou o A vai atacar.
-    if (i === maisPerto || j.perseguindo === i.id) circulo(ctx, x, y, p(boneco.raio) + 4, null, "rgba(255,255,255,0.7)", 2);
-    // Barra de vida.
-    const largura = p(boneco.raio * 2.4), altura = 6;
-    ctx.fillStyle = "#000";
-    ctx.fillRect(x - largura / 2, y - p(boneco.raio) - 16, largura, altura);
-    ctx.fillStyle = COR.boneco;
-    ctx.fillRect(x - largura / 2, y - p(boneco.raio) - 16, (largura * i.vida) / boneco.vida, altura);
+  /** Troca o jogo desenhado (ao recomeçar o mapa). O conteúdo do mapa é o mesmo. */
+  trocarJogo(jogo: Jogo): void {
+    this.jogo = jogo;
+    this.efeitos.limpar();
+    this.efeitos.troca = DURACAO.troca;
   }
 
-  // Projéteis.
-  for (const t of mundo.projeteis) circulo(ctx, p(t.pos.x), p(t.pos.y), 4, COR.tiro, null);
+  /** Ponto do chão embaixo de uma posição em pixels do canvas por cima (como o mouse informa). */
+  telaParaMundo = (x: number, y: number): Vetor | null => {
+    const r = this.telaHud.getBoundingClientRect();
+    if (r.width === 0 || r.height === 0) return null;
+    return this.camera.chaoEmbaixo(x / r.width, y / r.height);
+  };
 
-  // Jogador, com o arco amarelo enchendo durante o preparo.
-  const jx = p(j.pos.x), jy = p(j.pos.y), jr = p(personagem.raio);
-  const corpo = j.acao?.fase === "recuperacao" ? COR.recuperacao : COR.jogador;
-  circulo(ctx, jx, jy, jr, corpo, null);
-  if (j.acao) {
-    const dir = j.acao.direcao;
-    ctx.strokeStyle = COR.texto;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(jx, jy);
-    ctx.lineTo(jx + dir.x * jr * 1.4, jy + dir.y * jr * 1.4);
-    ctx.stroke();
-    if (j.acao.fase === "preparo") {
-      const prog = progressoDaFase(j.acao, ataqueBasico);
-      ctx.strokeStyle = COR.preparo;
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(jx, jy, jr + 5, -Math.PI / 2, -Math.PI / 2 + prog * Math.PI * 2);
-      ctx.stroke();
+  desenhar(mouse: Vetor | null, segundos: number): void {
+    const jogo = this.jogo;
+    const T = performance.now() / 1000;
+    this.efeitos.atualizar(segundos);
+    const hud = this.hud;
+    hud.clearRect(0, 0, VL, VA);
+    if (jogo.luta) {
+      this.luta.desenhar(jogo.luta, this.camera, this.efeitos, this.opcoes, mouse, T);
+      const nome = lugarPorId(jogo, jogo.lugarDaLuta)?.nome ?? "";
+      this.luta.desenharPorCima(hud, VL, VA, jogo.luta, this.camera, this.efeitos, nome);
+    } else {
+      this.mapa.desenhar(jogo.viagem, this.camera, T);
+      this.mapa.desenharPorCima(hud, VL, VA, jogo.viagem, jogo.dados, this.camera, this.efeitos, T);
     }
-  }
-
-  // Números de dano.
-  ctx.textAlign = "center";
-  ctx.font = "bold 16px system-ui, sans-serif";
-  for (const n of efeitos.numeros) {
-    const prog = efeitos.progresso(n);
-    ctx.globalAlpha = 1 - prog;
-    ctx.fillStyle = n.cor;
-    ctx.fillText(n.texto, p(n.pos.x), p(n.pos.y) - p(1.2) - prog * 30);
-  }
-  ctx.globalAlpha = 1;
-}
-
-function circulo(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, preencher: string | null, contorno: string | null, espessura = 1): void {
-  ctx.beginPath();
-  ctx.arc(x, y, r, 0, Math.PI * 2);
-  if (preencher) {
-    ctx.fillStyle = preencher;
-    ctx.fill();
-  }
-  if (contorno) {
-    ctx.strokeStyle = contorno;
-    ctx.lineWidth = espessura;
-    ctx.stroke();
+    // escurece e clareia na troca entre mapa e luta
+    if (this.efeitos.troca > 0) {
+      hud.fillStyle = `rgba(0,0,0,${Math.min(1, this.efeitos.troca / DURACAO.troca)})`;
+      hud.fillRect(0, 0, VL, VA);
+    }
   }
 }

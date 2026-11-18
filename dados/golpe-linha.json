@@ -1,0 +1,10 @@
+{
+  "preparo": 0.8,
+  "ativo": 0,
+  "recuperacao": 0.9,
+  "usarAPartirDe": 5.5,
+  "comprimento": 14,
+  "largura": 1.4,
+  "recarga": 2.5,
+  "dano": 1
+}

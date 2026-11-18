@@ -1,4 +1,6 @@
 {
   "velocidade": 5.5,
-  "raio": 0.45
+  "raio": 0.45,
+  "vida": 5,
+  "guardaHabilidade": 0.4
 }
