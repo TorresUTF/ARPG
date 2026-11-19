@@ -1,11 +1,11 @@
 ---
 id: TASK-10
 title: Validar a luta contra o chefe que reage
-status: To Do
+status: Done
 assignee:
   - Gabriel
 created_date: '2026-11-19T12:10:00Z'
-updated_date: '2026-11-19T12:10:00Z'
+updated_date: '2026-11-19T13:03:00Z'
 labels:
   - validacao
 milestone: m-2
