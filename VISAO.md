@@ -1,6 +1,6 @@
 # Visão do jogo
 
-Este documento define o que o jogo é. Ele muda raramente, e só por decisão do autor.
+Este documento define o que o jogo é. Ele pode mudar após testes de jogabilidade, e só por decisão do autor.
 Toda mudança no projeto deve ser conferida contra ele.
 
 ## Em uma frase
@@ -9,14 +9,15 @@ Um jogo de ação visto de cima em que o jogador enfrenta chefes com o controle 
 o mouse move e mira, o teclado dispara as habilidades.
 
 ## Fase de desenvolvimento
-O protótipo de chefe, horadas e mapa foi aprovado.
+
+O protótipo de chefe, hordas e mapa foi aprovado.
 Agora estamos na fase de desenvolvimento do projeto.
 
 ## A experiência que o jogo existe para entregar
 
 O jogador deve se sentir desafiado pelos obstáculos impostos a ele, de forma que dominar seu personagem se torna recompensador.
-A jogabilidade deve ser fluida, possibilitando o cancelamento de animação, mas sem tirar o custo de uma ação. Exemplo: Ao dar o ataque básico o personagem vai ficar parado e fazer a animação de carregar o ataque, mas o jogador pode cancelar a animação de recuperação se movendo ou usando uma habilidade, mas o jogador não pode atacar enquanto o próximo ataque não estiver disponível (depende da velocidade de ataque do personagem), se um jogador displicente clicar 2x seguidas para atacar o personagem vai ficar parado e executar os dois ataques, mas um jogador mais preciso pode dar um ataque básico, cancelar a animação de recuperação se movendo para longe do chefe e dar um segundo ataque quando o próximo ataque básico estiver pronto, ambos jogadores deram o mesmo dano no mesmo intervalo de tempo, a diferença está na precisão e intensão dos movimentos que permitiram o segundo jogador desviar de um ataque ou se reposicionar no meio tempo.
-O jogador também deve se sentir recompensado por explorar um mundo aberto, ganhando recompensas variadas. Posibilitando builds criativas utilizando: Lvs, Brasões de arquetipos, habilidades novas (que escalam de acordo com o atributo upado e o arquetipo do personagem) e armaduras que dão efeitos passivos.
+A jogabilidade deve ser fluida, possibilitando o cancelamento de animação, mas sem tirar o custo de uma ação. Exemplo: Ao dar o ataque básico o personagem vai ficar parado e fazer a animação de carregar o ataque, mas o jogador pode cancelar a animação de recuperação se movendo ou usando uma habilidade, mas o jogador não pode atacar enquanto o próximo ataque não estiver disponível (depende da velocidade de ataque do personagem), se um jogador displicente clicar 2x seguidas para atacar o personagem vai ficar parado e executar os dois ataques, mas um jogador mais preciso pode dar um ataque básico, cancelar a animação de recuperação se movendo para longe do chefe e dar um segundo ataque quando o próximo ataque básico estiver pronto, ambos os jogadores deram o mesmo dano no mesmo intervalo de tempo, a diferença está na precisão e intenção dos movimentos que permitiram ao segundo jogador desviar de um ataque ou se reposicionar no meio tempo.
+O jogador também deve se sentir recompensado por explorar um mundo aberto, ganhando recompensas variadas. Possibilitando builds criativas utilizando: Lvs, Brasões de arquétipos, habilidades novas (que escalam de acordo com o atributo upado e o arquetipo do personagem) e armaduras que dão efeitos passivos.
 
 ## Pilares
 
@@ -25,45 +26,35 @@ O jogador também deve se sentir recompensado por explorar um mundo aberto, ganh
 3. **Virada merecida.** As ferramentas de recuperação premiam risco e precisão. O jogo nunca ajuda quem está perdendo sem exigir nada em troca.
 4. **Legibilidade.** Todo golpe do chefe é anunciado. O jogador sempre entende por que morreu.
 
-## O chefe
+## Os chefes
 
-O chefe precisa poder ser superado, não apenas decorado. Para isso ele tem:
+Os chefes precisam poder ser superados. Para isso eles têm:
 
-- ataques que podem ser virados contra ele;
-- reação ao comportamento do jogador (por exemplo, fechar a distância de quem só foge, varia a ordem das habilidades).
+* ataques que podem ser virados contra eles;
+* reação ao comportamento do jogador (por exemplo, fechar a distância de quem só foge, variar a ordem das habilidades).
+
+
 
 ## O que o jogo não é
 
-- Não é um MOBA: sem times, rotas, farm ou partidas longas.
-- Não é PvP, pelo menos por enquanto. O 1v1 só entra em discussão depois que o combate contra chefes estiver bom.
+* Não é um MOBA: sem times, rotas, farm ou partidas longas.
+* Não é PvP, pelo menos por enquanto. O 1v1 só entra em discussão depois que o combate contra chefes estiver bom.
 
-## Escopo da primeira versão
 
-Um personagem com quatro habilidades e um mapa para viajar: névoa que some por onde se passa,
-fogueiras para descansar, baús, emboscadas de hordas, masmorras e um chefe. As lutas acontecem numa arena.
-Formas geométricas simples, em 3D, no lugar de arte até o combate estar divertido.
 
-## Ponto de partida do personagem
+## Personagens
 
-Um atirador de curto alcance:
 
-| Tecla | Habilidade | Função |
-|---|---|---|
-| Clique | Ataque básico à distância, com tempo de preparo | Ritmo do kiting |
-| Q | Tiro mirado de dano alto | Punir uma abertura |
-| W | Tiro mirado que marca; ataques básicos no marcado explodem a marca | Recompensa por continuar atacando |
-| E | Avanço curto | Mobilidade e reposicionamento |
-| R | Aparo de janela curta e recarga longa; atordoa quem atacou | A virada |
 
-O ciclo esperado: kitar com ataques básicos, marcar com W e explodir a marca,
-punir com Q, reposicionar com E e usar o aparo quando tudo dá errado.
+Sobre os Personagens:
+1. Têm arquétipos, que mudam sua jogabilidade.
+2. Têm os atributos: Vida, Velocidade de ataque (ataque básico), Redução de cooldown das habilidades, Alcance do ataque básico, Energia, Carga e Mana.
+3. Personagens têm 4 habilidades customizáveis (que escalam de acordo com os atributos) e 2 fixas (D -> Um dash (rolamento do Elden Ring) que dá frames de invulnerabilidade. E o F -> Um pulo que dá frames de invulnerabilidade para parte de baixo do personagem).
+4. Gastam energia usando as habilidades fixas ou habilidades que especificamente usam energia.
+5. Gastam mana usando habilidades que não gastam energia.
+6. Têm Lvs, a cada Lv o jogador pode escolher um atributo para upar, com exceção do alcance (esse é fixo e depende da classe do personagem).
+7. Perdem vida quando são acertados por um inimigo.
+8. Perdem energia quando fazem esquivas consecutivas, após um período sem gastar energia ela regenera rapidamente.
 
 ## Como usar este documento para decidir
 
-Diante de qualquer ideia ou mudança, perguntar:
-
-1. Isso reforça algum pilar?
-2. Isso contradiz algum pilar ou entra na lista do que o jogo não é?
-3. Isso cabe no escopo da primeira versão?
-
-Se a resposta à primeira for "não", a ideia fica de fora, por melhor que pareça.
