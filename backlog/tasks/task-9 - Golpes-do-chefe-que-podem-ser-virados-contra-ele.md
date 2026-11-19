@@ -1,9 +1,10 @@
 ---
 id: TASK-9
 title: Golpes do chefe que podem ser virados contra ele
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-11-19T12:10:00Z'
+updated_date: '2026-11-19T12:18:00Z'
 labels: []
 milestone: m-2
 dependencies:
