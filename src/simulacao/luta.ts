@@ -3,7 +3,7 @@ import type { AcaoEmCurso } from "./acao";
 import type { Aleatorio } from "./aleatorio";
 import type { TeclaHabilidade } from "./comandos";
 import type { Dados } from "./dados";
-import type { Evento } from "./eventos";
+import type { EstiloAvanco, Evento, MotivoAvanco } from "./eventos";
 import { emPassos } from "./tempo";
 import { distancia, limitar, type Vetor } from "./vetor";
 
@@ -47,6 +47,25 @@ export interface Inimigo {
   marca: number;
   /** Ataques básicos já acertados na marca. */
   cargas: number;
+  /** Só o golem: o que ele percebe do jogador e o avanço. */
+  cerebro?: CerebroGolem;
+}
+
+/** O que o golem lembra do jogador e o estado do avanço dele (design/inimigos.md#Chefe que reage ao jogador). */
+export interface CerebroGolem {
+  estilo: EstiloAvanco;
+  passosNoEstilo: number;
+  /** Notas que esquecem com o tempo: fuga (0 a 1), esquivas com E e ataques de perto (contagens). */
+  perfil: { fuga: number; esquivaE: number; agressao: number };
+  /** Passos até o avanço ficar pronto. */
+  recargaAvanco: number;
+  /** Passos com o avanço pronto sem ser usado. */
+  segurando: number;
+  /** Posição do jogador no passo anterior e a velocidade medida a partir dela. */
+  jogadorAntes: Vetor;
+  velocidadeJogador: Vetor;
+  /** Motivo do último avanço. */
+  motivo: MotivoAvanco | null;
 }
 
 /** Tiro do jogador. O do ataque básico tem alvo e não erra; Q e W voam em linha reta. */

@@ -4,6 +4,11 @@ import type { Vetor } from "./vetor";
 
 export type NomeGolpe = "circulo" | "saturno" | "linha";
 
+/** Como o golem usa o avanço (design/inimigos.md#Avanço). */
+export type EstiloAvanco = "pressao" | "paciente" | "garantir";
+/** Por que o golem usou o avanço agora. */
+export type MotivoAvanco = "pressao" | "eEmRecarga" | "preso" | "cansou";
+
 export type Evento =
   // ----- Luta -----
   /** O jogador entrou numa fase de ação, ou ficou livre. */
@@ -16,6 +21,10 @@ export type Evento =
   | { tipo: "marcaExplodiu"; alvo: number; pos: Vetor }
   /** Um golpe do chefe aconteceu (acertando ou não). Leva a forma do golpe para o desenho mostrar. */
   | { tipo: "golpe"; inimigo: number; golpe: NomeGolpe; pos: Vetor; direcao: Vetor }
+  /** O golem começou o aviso do avanço, e por quê. */
+  | { tipo: "avancoGolem"; inimigo: number; motivo: MotivoAvanco }
+  /** O golem trocou o estilo do avanço. */
+  | { tipo: "estiloGolem"; inimigo: number; estilo: EstiloAvanco }
   /** Uma área no chão explodiu. */
   | { tipo: "areaExplodiu"; pos: Vetor }
   | { tipo: "jogadorAtingido"; dano: number; pos: Vetor }

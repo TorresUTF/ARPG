@@ -1,0 +1,19 @@
+{
+  "preparo": 0.35,
+  "recuperacao": 0.12,
+  "distancia": 7,
+  "velocidade": 24,
+  "recarga": 9,
+  "recargaInicial": 3,
+  "preparoCirculoEmendado": 0.45,
+  "emendarAte": 0.6,
+  "naoUsarAte": 0.75,
+  "folgaNaoUsar": 0.5,
+  "alcanceCirculo": 0.6,
+  "previsao": 0.15,
+  "folgaEncostar": 0.2,
+  "distanciaMinima": 0.5,
+  "pressaoAPartirDe": 4,
+  "seguraMax": 7,
+  "fatorEFora": 0.8
+}

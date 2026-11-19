@@ -113,7 +113,7 @@ export function animarJogador(r: ModeloJogador, e: PoseJogador): void {
 
 // ===== Golem: barro rachado, amarrado a duas estacas. O corpo inteiro troca de cor no aviso. =====
 
-export type NomeGolpeDesenho = "circulo" | "saturno" | "linha";
+export type NomeGolpeDesenho = "circulo" | "saturno" | "linha" | "avanco";
 const COR_BARRO = {
   normal: cor3("#b5673f"),
   recuperacao: cor3("#5c3826"),
@@ -121,6 +121,7 @@ const COR_BARRO = {
   circulo: cor3(CORES.golpe.circulo),
   saturno: cor3(CORES.golpe.saturno),
   linha: cor3(CORES.golpe.linha),
+  avanco: cor3(CORES.avanco),
 };
 export const COR_BARRO_NORMAL = COR_BARRO.normal;
 
@@ -197,7 +198,7 @@ export function criarGolem(cena: THREE.Object3D, naLuta: boolean): ModeloGolem {
 export function animarGolem(r: ModeloGolem, b: PoseGolem): void {
   const preparo = b.estado === "preparo" && b.golpe !== null;
   const alvo =
-    preparo && b.golpe === "linha"
+    preparo && (b.golpe === "linha" || b.golpe === "avanco")
       ? Math.atan2(b.mira.y, b.mira.x)
       : b.estado === "atordoado" || b.estado === "recuperacao"
         ? r.angulo

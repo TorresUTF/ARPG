@@ -1,5 +1,6 @@
 // O personagem na luta: comandos, ações, recargas e os tiros dele.
 import { avancarAcao, fasesDe, iniciarAcao, passosTotais, type AcaoEmCurso } from "./acao";
+import { anotarAcaoDoJogador } from "./cerebroGolem";
 import type { Comando, TeclaHabilidade } from "./comandos";
 import { causarDano, dentroDaArena, inimigoMaisPerto, inimigoPorId, type Inimigo, type Mundo } from "./luta";
 import { DT, emPassos } from "./tempo";
@@ -90,6 +91,7 @@ function comecar(mundo: Mundo, acao: AcaoEmCurso): void {
   j.destino = null;
   j.perseguindo = null;
   mundo.eventos.push({ tipo: "fase", fase: "preparo" });
+  anotarAcaoDoJogador(mundo, acao.tipo);
 }
 
 /** Mover ou usar habilidade corta a recuperação. A recarga continua: o custo da ação já foi pago. */

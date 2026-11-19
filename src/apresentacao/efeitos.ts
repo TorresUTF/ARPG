@@ -1,6 +1,6 @@
 // Respostas visuais aos eventos da simulação. Só enfeitam: nunca mudam as regras.
 // Os tempos daqui são do desenho (segundos de tela), não números de jogo.
-import type { Evento, NomeGolpe } from "../simulacao/eventos";
+import type { EstiloAvanco, Evento, MotivoAvanco, NomeGolpe } from "../simulacao/eventos";
 import type { Vetor } from "../simulacao/vetor";
 
 interface NumeroFlutuante {
@@ -18,6 +18,21 @@ export interface GolpeVisto {
   t: number;
 }
 
+/** Nome e explicação de cada estilo do avanço do golem, como aparecem na tela. */
+export const TEXTO_ESTILO: Record<EstiloAvanco, { nome: string; porque: string }> = {
+  pressao: { nome: "Pressão", porque: "você foge muito: avança assim que pode" },
+  paciente: { nome: "Paciente", porque: "você escapa com o E: segura o avanço até seu E entrar em recarga" },
+  garantir: { nome: "Garantir o golpe", porque: "você troca golpes de perto: espera você ficar preso num ataque" },
+};
+
+/** Por que o golem avançou agora. */
+export const TEXTO_MOTIVO: Record<MotivoAvanco, string> = {
+  pressao: "Avanço: pronto, mantém a pressão",
+  eEmRecarga: "Avanço: seu E está em recarga",
+  preso: "Avanço: você ficou preso no ataque",
+  cansou: "Avanço: cansou de esperar",
+};
+
 export const DURACAO = {
   numero: 0.7,
   clarao: 0.12,
@@ -27,6 +42,7 @@ export const DURACAO = {
   dor: 0.3,
   aparo: 0.4,
   aviso: 3,
+  chefe: 2.5,
   troca: 0.35,
 };
 
@@ -47,6 +63,9 @@ export class Efeitos {
   /** Texto curto no topo da tela do mapa. */
   aviso = "";
   avisoT = 0;
+  /** Texto curto sobre o chefe na luta (motivo do avanço, troca de estilo). */
+  chefe = "";
+  chefeT = 0;
   /** Escurece e clareia na troca entre mapa e luta. */
   troca = 0;
 
@@ -59,6 +78,7 @@ export class Efeitos {
     this.explosoes.clear();
     this.areas = [];
     this.dor = this.aparo = 0;
+    this.chefeT = 0;
   }
 
   receber(eventos: Evento[]): void {
@@ -83,6 +103,14 @@ export class Efeitos {
         case "aparou":
           this.aparo = DURACAO.aparo;
           this.numeros.push({ texto: "aparou!", pos: { x: e.pos.x, y: e.pos.y - 1 }, idade: -0.1, cor: "#9be7ff" });
+          break;
+        case "avancoGolem":
+          this.chefe = TEXTO_MOTIVO[e.motivo];
+          this.chefeT = DURACAO.chefe;
+          break;
+        case "estiloGolem":
+          this.chefe = `O chefe mudou para ${TEXTO_ESTILO[e.estilo].nome}`;
+          this.chefeT = DURACAO.chefe;
           break;
         case "disparou":
           this.disparou = true;
@@ -128,6 +156,7 @@ export class Efeitos {
     this.dor = Math.max(0, this.dor - segundos);
     this.aparo = Math.max(0, this.aparo - segundos);
     this.avisoT = Math.max(0, this.avisoT - segundos);
+    this.chefeT = Math.max(0, this.chefeT - segundos);
     this.troca = Math.max(0, this.troca - segundos);
   }
 
