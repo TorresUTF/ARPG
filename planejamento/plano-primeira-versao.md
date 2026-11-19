@@ -1,7 +1,5 @@
 # Plano: primeira versão jogável
 
-**Status:** `IN PROGRESS`
-
 Combinado com Gabriel em 10/11/2026. Projeto pessoal, sem prazo.
 
 **Objetivo:** ter a primeira versão jogável no navegador, com o escopo do `VISAO.md`: um personagem com quatro habilidades, o mapa com hordas e masmorras, e um chefe.

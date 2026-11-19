@@ -1,7 +1,5 @@
 # Protótipo: dash do chefe que se adapta ao jogador
 
-**Status:** `DONE`
-
 Pedido do Gabriel em 18/11/2026.
 
 **Objetivo:** descobrir se um chefe com dash próprio parece mais inteligente. O dash tem recarga maior que a do avanço (E) do personagem, e o chefe escolhe como usá-lo de acordo com o que o jogador faz:
