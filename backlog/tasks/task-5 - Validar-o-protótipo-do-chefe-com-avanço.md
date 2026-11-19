@@ -1,10 +1,11 @@
 ---
 id: TASK-5
 title: Validar o protótipo do chefe com avanço
-status: To Do
+status: Done
 assignee:
   - Gabriel
 created_date: '2026-11-19T12:10:00Z'
+updated_date: '2026-11-19T12:20:00Z'
 labels:
   - validacao
 milestone: m-2
