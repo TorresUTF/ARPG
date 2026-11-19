@@ -2,8 +2,8 @@
 // Todo golpe segue as três fases; o preparo é o aviso que o jogador vê.
 import { avancarAcao, fasesDaAcao, iniciarAcao, type AcaoEmCurso } from "./acao";
 import { sortear } from "./aleatorio";
-import { atualizarPerfil, decidirAvanco, escolherEstilo } from "./cerebroGolem";
-import type { MotivoAvanco } from "./eventos";
+import { anotarGolpe, atualizarPerfil, decidirAvanco, escolherEstilo, sortearGolpe } from "./cerebroGolem";
+import type { MotivoAvanco, NomeGolpe } from "./eventos";
 import { atingirJogador, dentroDaArena, type CerebroGolem, type Inimigo, type Mundo } from "./luta";
 import { DT, emPassos } from "./tempo";
 import { direcao, distancia, girar, limitar, moverEmDirecao, type Vetor } from "./vetor";
@@ -70,15 +70,20 @@ function atualizarGolem(mundo: Mundo, b: Inimigo): void {
     }
   }
   const d = distancia(j.pos, b.pos);
-  const comecar = (golpe: "circulo" | "saturno" | "linha") => (b.acao = iniciarAcao(golpe, direcao(b.pos, j.pos)));
-  if (d <= golpeCirculo.raio * golpeCirculo.usarAte) comecar("circulo");
-  else if (b.recargas.saturno <= 0 && d < golpeSaturno.fimAnel * golpeSaturno.usarAte) {
-    comecar("saturno");
-    b.recargas.saturno = emPassos(golpeSaturno.recarga);
-  } else if (b.recargas.linha <= 0 && d >= golpeLinha.usarAPartirDe) {
-    comecar("linha");
-    b.recargas.linha = emPassos(golpeLinha.recarga);
-  } else andarAteJogador(mundo, b, golem.velocidade);
+  // A distância decide quais golpes servem; se mais de um serve, sorteia pelo peso.
+  const servem: NomeGolpe[] = [];
+  if (d <= golpeCirculo.raio * golpeCirculo.usarAte) servem.push("circulo");
+  if (b.recargas.saturno <= 0 && d < golpeSaturno.fimAnel * golpeSaturno.usarAte) servem.push("saturno");
+  if (b.recargas.linha <= 0 && d >= golpeLinha.usarAPartirDe) servem.push("linha");
+  if (servem.length === 0) {
+    andarAteJogador(mundo, b, golem.velocidade);
+    return;
+  }
+  const golpe = sortearGolpe(mundo, c, servem);
+  b.acao = iniciarAcao(golpe, direcao(b.pos, j.pos));
+  // Golpe que acerta volta mais rápido: a recarga é dividida pelo peso.
+  if (golpe === "saturno") b.recargas.saturno = emPassos(golpeSaturno.recarga / c.pesos.saturno);
+  if (golpe === "linha") b.recargas.linha = emPassos(golpeLinha.recarga / c.pesos.linha);
 }
 
 /**
@@ -149,7 +154,10 @@ function resolverGolpe(mundo: Mundo, b: Inimigo, acao: AcaoEmCurso): void {
   if (acao.tipo === "circulo" || acao.tipo === "saturno" || acao.tipo === "linha") {
     mundo.eventos.push({ tipo: "golpe", inimigo: b.id, golpe: acao.tipo, pos: { ...b.pos }, direcao: { ...acao.direcao } });
   }
-  if (acertou) atingirJogador(mundo, b, dano);
+  const aparado = acertou && atingirJogador(mundo, b, dano);
+  if (b.cerebro && (acao.tipo === "circulo" || acao.tipo === "saturno" || acao.tipo === "linha")) {
+    anotarGolpe(mundo, b, b.cerebro, acao.tipo, acertou && !aparado);
+  }
 }
 
 // ===== Horda =====

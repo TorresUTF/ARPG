@@ -1,7 +1,8 @@
 // O que o golem percebe do jogador e como decide usar o avanço (dash).
 // Design: design/inimigos.md#Chefe que reage ao jogador. Veio do protótipo prototipos/chefe-dash/.
 import type { TipoAcao } from "./acao";
-import type { EstiloAvanco, MotivoAvanco } from "./eventos";
+import { sortear } from "./aleatorio";
+import type { EstiloAvanco, MotivoAvanco, NomeGolpe } from "./eventos";
 import type { CerebroGolem, Inimigo, Mundo } from "./luta";
 import { DT, emPassos } from "./tempo";
 import { distancia, type Vetor } from "./vetor";
@@ -18,7 +19,37 @@ export function novoCerebro(mundo: Mundo, posJogador: Vetor): CerebroGolem {
     jogadorAntes: { ...posJogador },
     velocidadeJogador: { x: 0, y: 0 },
     motivo: null,
+    pesos: { circulo: mundo.dados.pesosGolem.inicial, saturno: mundo.dados.pesosGolem.inicial, linha: mundo.dados.pesosGolem.inicial },
+    preferido: null,
   };
+}
+
+const GOLPES: NomeGolpe[] = ["circulo", "saturno", "linha"];
+
+/** O golpe acertou (sobe o peso) ou o jogador escapou ou aparou (desce). Avisa quando o golpe preferido muda. */
+export function anotarGolpe(mundo: Mundo, b: Inimigo, c: CerebroGolem, golpe: NomeGolpe, acertou: boolean): void {
+  const p = mundo.dados.pesosGolem;
+  const novo = c.pesos[golpe] + (acertou ? p.ganhoAoAcertar : -p.perdaAoEscapar);
+  c.pesos[golpe] = Math.min(p.maximo, Math.max(p.minimo, novo));
+  const maior = Math.max(...GOLPES.map((g) => c.pesos[g]));
+  const topo = GOLPES.filter((g) => c.pesos[g] === maior);
+  const preferido = topo.length === 1 ? topo[0] : null;
+  if (preferido !== c.preferido) {
+    c.preferido = preferido;
+    if (preferido) mundo.eventos.push({ tipo: "golpePreferido", inimigo: b.id, golpe: preferido });
+  }
+}
+
+/** Sorteia um dos golpes que servem agora, com chance proporcional ao peso (semente da luta). */
+export function sortearGolpe(mundo: Mundo, c: CerebroGolem, servem: NomeGolpe[]): NomeGolpe {
+  if (servem.length === 1) return servem[0];
+  const total = servem.reduce((s, g) => s + c.pesos[g], 0);
+  let r = sortear(mundo.aleatorio) * total;
+  for (const g of servem) {
+    r -= c.pesos[g];
+    if (r < 0) return g;
+  }
+  return servem[servem.length - 1];
 }
 
 /** O golem está ameaçando: avisando um golpe, avançando, ou com o jogador quase no alcance do círculo. */

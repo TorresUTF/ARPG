@@ -1,0 +1,7 @@
+{
+  "inicial": 1,
+  "ganhoAoAcertar": 0.5,
+  "perdaAoEscapar": 0.25,
+  "minimo": 0.25,
+  "maximo": 3
+}

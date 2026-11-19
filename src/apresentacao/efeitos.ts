@@ -33,6 +33,9 @@ export const TEXTO_MOTIVO: Record<MotivoAvanco, string> = {
   cansou: "Avanço: cansou de esperar",
 };
 
+/** Nome de cada golpe do golem, com o artigo, para frases na tela. */
+const NOME_GOLPE: Record<NomeGolpe, string> = { circulo: "o círculo", saturno: "o saturno", linha: "a linha" };
+
 export const DURACAO = {
   numero: 0.7,
   clarao: 0.12,
@@ -106,6 +109,10 @@ export class Efeitos {
           break;
         case "avancoGolem":
           this.chefe = TEXTO_MOTIVO[e.motivo];
+          this.chefeT = DURACAO.chefe;
+          break;
+        case "golpePreferido":
+          this.chefe = `O chefe está preferindo ${NOME_GOLPE[e.golpe]}`;
           this.chefeT = DURACAO.chefe;
           break;
         case "estiloGolem":

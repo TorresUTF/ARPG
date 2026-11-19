@@ -3,7 +3,7 @@ import type { AcaoEmCurso } from "./acao";
 import type { Aleatorio } from "./aleatorio";
 import type { TeclaHabilidade } from "./comandos";
 import type { Dados } from "./dados";
-import type { EstiloAvanco, Evento, MotivoAvanco } from "./eventos";
+import type { EstiloAvanco, Evento, MotivoAvanco, NomeGolpe } from "./eventos";
 import { emPassos } from "./tempo";
 import { distancia, limitar, type Vetor } from "./vetor";
 
@@ -66,6 +66,10 @@ export interface CerebroGolem {
   velocidadeJogador: Vetor;
   /** Motivo do último avanço. */
   motivo: MotivoAvanco | null;
+  /** Peso de cada golpe: sobe quando acerta, desce quando o jogador escapa. */
+  pesos: Record<NomeGolpe, number>;
+  /** O golpe de maior peso (null enquanto há empate no topo, como no começo). */
+  preferido: NomeGolpe | null;
 }
 
 /** Tiro do jogador. O do ataque básico tem alvo e não erra; Q e W voam em linha reta. */
