@@ -10,14 +10,14 @@ o mouse move e mira, o teclado dispara as habilidades.
 
 ## Fase de desenvolvimento
 
-O protótipo de chefe, horadas e mapa foi aprovado.
+O protótipo de chefe, hordas e mapa foi aprovado.
 Agora estamos na fase de desenvolvimento do projeto.
 
 ## A experiência que o jogo existe para entregar
 
 O jogador deve se sentir desafiado pelos obstáculos impostos a ele, de forma que dominar seu personagem se torna recompensador.
-A jogabilidade deve ser fluida, possibilitando o cancelamento de animação, mas sem tirar o custo de uma ação. Exemplo: Ao dar o ataque básico o personagem vai ficar parado e fazer a animação de carregar o ataque, mas o jogador pode cancelar a animação de recuperação se movendo ou usando uma habilidade, mas o jogador não pode atacar enquanto o próximo ataque não estiver disponível (depende da velocidade de ataque do personagem), se um jogador displicente clicar 2x seguidas para atacar o personagem vai ficar parado e executar os dois ataques, mas um jogador mais preciso pode dar um ataque básico, cancelar a animação de recuperação se movendo para longe do chefe e dar um segundo ataque quando o próximo ataque básico estiver pronto, ambos jogadores deram o mesmo dano no mesmo intervalo de tempo, a diferença está na precisão e intensão dos movimentos que permitiram o segundo jogador desviar de um ataque ou se reposicionar no meio tempo.
-O jogador também deve se sentir recompensado por explorar um mundo aberto, ganhando recompensas variadas. Posibilitando builds criativas utilizando: Lvs, Brasões de arquetipos, habilidades novas (que escalam de acordo com o atributo upado e o arquetipo do personagem) e armaduras que dão efeitos passivos.
+A jogabilidade deve ser fluida, possibilitando o cancelamento de animação, mas sem tirar o custo de uma ação. Exemplo: Ao dar o ataque básico o personagem vai ficar parado e fazer a animação de carregar o ataque, mas o jogador pode cancelar a animação de recuperação se movendo ou usando uma habilidade, mas o jogador não pode atacar enquanto o próximo ataque não estiver disponível (depende da velocidade de ataque do personagem), se um jogador displicente clicar 2x seguidas para atacar o personagem vai ficar parado e executar os dois ataques, mas um jogador mais preciso pode dar um ataque básico, cancelar a animação de recuperação se movendo para longe do chefe e dar um segundo ataque quando o próximo ataque básico estiver pronto, ambos os jogadores deram o mesmo dano no mesmo intervalo de tempo, a diferença está na precisão e intenção dos movimentos que permitiram ao segundo jogador desviar de um ataque ou se reposicionar no meio tempo.
+O jogador também deve se sentir recompensado por explorar um mundo aberto, ganhando recompensas variadas. Possibilitando builds criativas utilizando: Lvs, Brasões de arquétipos, habilidades novas (que escalam de acordo com o atributo upado e o arquetipo do personagem) e armaduras que dão efeitos passivos.
 
 ## Pilares
 
@@ -28,10 +28,10 @@ O jogador também deve se sentir recompensado por explorar um mundo aberto, ganh
 
 ## Os chefes
 
-Os chefes precisam poder serem superados. Para isso ele tem:
+Os chefes precisam poder ser superados. Para isso eles têm:
 
-* ataques que podem ser virados contra ele;
-* reação ao comportamento do jogador (por exemplo, fechar a distância de quem só foge, varia a ordem das habilidades).
+* ataques que podem ser virados contra eles;
+* reação ao comportamento do jogador (por exemplo, fechar a distância de quem só foge, variar a ordem das habilidades).
 
 
 
@@ -47,14 +47,14 @@ Os chefes precisam poder serem superados. Para isso ele tem:
 
 
 Sobre os Personagens:
-1.Tem arquétipos, que mudam sua jogabilidade.
-2.Tem os atributos: Vida, Velocidade de ataque (ataque básico), Redução de cooldown das habilidades, Alcance do ataque básico, Energia, Carga e Mana.
-3.Personagens tem 4 habilidades customizáveis (que escalam de acordo com os atributos) e 2 fixa (D -> Um dash (rolamento do elden Ring) que dá frames de invulnerabilidade. E o F -> Um pulo que dá Frames de invulnerabilidade para parte de baixa do personagem).
-4.Gastam energia usando as habilidades fixas ou habilidades que especificamente usam energia.
+1. Têm arquétipos, que mudam sua jogabilidade.
+2. Têm os atributos: Vida, Velocidade de ataque (ataque básico), Redução de cooldown das habilidades, Alcance do ataque básico, Energia, Carga e Mana.
+3. Personagens têm 4 habilidades customizáveis (que escalam de acordo com os atributos) e 2 fixas (D -> Um dash (rolamento do Elden Ring) que dá frames de invulnerabilidade. E o F -> Um pulo que dá frames de invulnerabilidade para parte de baixo do personagem).
+4. Gastam energia usando as habilidades fixas ou habilidades que especificamente usam energia.
 5. Gastam mana usando habilidades que não gastam energia.
-6. Tem Lvs, a cada Lv o jogador pode escolher um atributo para upar, com exceção do alcance (esse é fixo e depende da classe do personagem).
-7. Perde vida quando é acertado por um inimigo.
-8. Perde energia quando faz esquivas consecutivas, após um periodo sem gastar energia ela regenera rápidamente.
+6. Têm Lvs, a cada Lv o jogador pode escolher um atributo para upar, com exceção do alcance (esse é fixo e depende da classe do personagem).
+7. Perdem vida quando são acertados por um inimigo.
+8. Perdem energia quando fazem esquivas consecutivas, após um período sem gastar energia ela regenera rapidamente.
 
 ## Como usar este documento para decidir
 
