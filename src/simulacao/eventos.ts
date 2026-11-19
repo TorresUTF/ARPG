@@ -23,6 +23,8 @@ export type Evento =
   | { tipo: "golpe"; inimigo: number; golpe: NomeGolpe; pos: Vetor; direcao: Vetor }
   /** O golem começou o aviso do avanço, e por quê. */
   | { tipo: "avancoGolem"; inimigo: number; motivo: MotivoAvanco }
+  /** O golpe de maior peso do golem mudou. */
+  | { tipo: "golpePreferido"; inimigo: number; golpe: NomeGolpe }
   /** O golem trocou o estilo do avanço. */
   | { tipo: "estiloGolem"; inimigo: number; estilo: EstiloAvanco }
   /** Uma área no chão explodiu. */

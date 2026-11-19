@@ -9,6 +9,7 @@ import pocao from "../../dados/pocao.json";
 import golem from "../../dados/golem.json";
 import avancoGolem from "../../dados/avanco-golem.json";
 import estilosGolem from "../../dados/estilos-golem.json";
+import pesosGolem from "../../dados/pesos-golem.json";
 import golpeCirculo from "../../dados/golpe-circulo.json";
 import golpeSaturno from "../../dados/golpe-saturno.json";
 import golpeLinha from "../../dados/golpe-linha.json";
@@ -112,6 +113,8 @@ export interface Dados {
     /** Atacar a menos de (raio do círculo + isto) conta como agressão. */
     distanciaAgressao: number;
   };
+  /** Peso de cada golpe do golem: sobe quando acerta, desce quando o jogador escapa (design/inimigos.md#Ordem dos golpes). */
+  pesosGolem: { inicial: number; ganhoAoAcertar: number; perdaAoEscapar: number; minimo: number; maximo: number };
   golpeCirculo: FasesDeAcao & { raio: number; usarAte: number; dano: number };
   golpeSaturno: FasesDeAcao & {
     nucleo: number;
@@ -176,6 +179,7 @@ export function dadosIniciais(): Dados {
     golem,
     avancoGolem,
     estilosGolem,
+    pesosGolem,
     golpeCirculo,
     golpeSaturno,
     golpeLinha,

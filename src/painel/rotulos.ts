@@ -142,6 +142,16 @@ export const ROTULOS: Grupos = {
       distanciaAgressao: { nome: "Agressão: ataque a menos de (m além do círculo)", min: 0, max: 8, passo: 0.1 },
     },
   },
+  pesosGolem: {
+    titulo: "Golem: preferência pelos golpes que acertam",
+    campos: {
+      inicial: { nome: "Peso inicial de cada golpe", min: 0.1, max: 5, passo: 0.05, aoRecomecar: true },
+      ganhoAoAcertar: { nome: "Peso ganho quando o golpe acerta", min: 0, max: 2, passo: 0.05 },
+      perdaAoEscapar: { nome: "Peso perdido quando você escapa ou apara", min: 0, max: 2, passo: 0.05 },
+      minimo: { nome: "Peso mínimo", min: 0.05, max: 2, passo: 0.05 },
+      maximo: { nome: "Peso máximo", min: 1, max: 10, passo: 0.1 },
+    },
+  },
   golpeCirculo: {
     titulo: "Golem: círculo",
     campos: {
