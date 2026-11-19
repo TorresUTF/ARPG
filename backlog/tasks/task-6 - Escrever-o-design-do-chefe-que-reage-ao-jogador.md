@@ -1,9 +1,10 @@
 ---
 id: TASK-6
 title: Escrever o design do chefe que reage ao jogador
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-11-19T12:10:00Z'
+updated_date: '2026-11-19T12:30:00Z'
 labels: []
 milestone: m-2
 dependencies:
