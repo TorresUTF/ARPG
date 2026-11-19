@@ -3,6 +3,7 @@
 import { criarAleatorio, sortear } from "./aleatorio";
 import type { Comando } from "./comandos";
 import type { Dados, Sala } from "./dados";
+import { novoCerebro } from "./cerebroGolem";
 import { atualizarAreas, atualizarDisparos, atualizarInimigos } from "./inimigos";
 import { aplicarGuardados, atualizarJogador, atualizarProjeteis, atualizarRecargas, receberComando } from "./jogador";
 import type { Inimigo, Mundo, TipoInimigo } from "./luta";
@@ -81,7 +82,7 @@ function novoInimigo(mundo: Mundo, tipo: TipoInimigo, pos: { x: number; y: numbe
   const chefe = tipo === "golem";
   const espera = chefe ? 0 : emPassos(horda.esperaInicial + sortear(mundo.aleatorio) * horda.recarga);
   const recargaChefe = chefe ? emPassos(golem.recargaInicial) : 0;
-  return {
+  const inimigo: Inimigo = {
     id: mundo.proximoId++,
     tipo,
     pos,
@@ -94,6 +95,8 @@ function novoInimigo(mundo: Mundo, tipo: TipoInimigo, pos: { x: number; y: numbe
     marca: 0,
     cargas: 0,
   };
+  if (chefe) inimigo.cerebro = novoCerebro(mundo, mundo.jogador.pos);
+  return inimigo;
 }
 
 /** Avança o mundo exatamente um passo (1/60 s), aplicando os comandos recebidos neste passo. */

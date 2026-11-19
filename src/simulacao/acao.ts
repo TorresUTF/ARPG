@@ -11,7 +11,7 @@ export type Fase = "preparo" | "ativo" | "recuperacao";
 const ORDEM: Fase[] = ["preparo", "ativo", "recuperacao"];
 
 /** Nome da ação, ligado à entrada dela em dados/. "disparo" é o tiro dos inimigos da horda. */
-export type TipoAcao = "ataqueBasico" | TeclaHabilidade | "pocao" | NomeGolpe | "disparo";
+export type TipoAcao = "ataqueBasico" | TeclaHabilidade | "pocao" | NomeGolpe | "disparo" | "avancoGolem";
 
 export interface AcaoEmCurso {
   tipo: TipoAcao;
@@ -22,6 +22,11 @@ export interface AcaoEmCurso {
   alvo?: number;
   /** Direção da mira, travada quando a ação começa. */
   direcao: Vetor;
+  /** Avanço do golem: metros a percorrer na fase ativa e quanto já percorreu. */
+  distancia?: number;
+  percorrido?: number;
+  /** Círculo emendado logo depois do avanço do golem: aviso mais curto. */
+  emendado?: boolean;
 }
 
 export function iniciarAcao(tipo: TipoAcao, direcao: Vetor, alvo?: number): AcaoEmCurso {
@@ -54,7 +59,22 @@ export function fasesDe(dados: Dados, tipo: TipoAcao): FasesDeAcao {
       return dados.golpeLinha;
     case "disparo":
       return dados.horda;
+    case "avancoGolem": {
+      const { preparo, recuperacao, distancia, velocidade } = dados.avancoGolem;
+      return { preparo, ativo: velocidade > 0 ? distancia / velocidade : 0, recuperacao };
+    }
   }
+}
+
+/** As fases de uma ação em curso: como fasesDe, mas o avanço do golem dura a distância dele e o círculo emendado tem aviso mais curto. */
+export function fasesDaAcao(dados: Dados, acao: AcaoEmCurso): FasesDeAcao {
+  const fases = fasesDe(dados, acao.tipo);
+  if (acao.tipo === "avancoGolem" && acao.distancia !== undefined) {
+    const { velocidade } = dados.avancoGolem;
+    return { ...fases, ativo: velocidade > 0 ? acao.distancia / velocidade : 0 };
+  }
+  if (acao.emendado) return { ...fases, preparo: dados.avancoGolem.preparoCirculoEmendado };
+  return fases;
 }
 
 /** Passos que a ação inteira leva, do começo do preparo ao fim da recuperação. */

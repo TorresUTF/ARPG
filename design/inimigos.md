@@ -11,7 +11,7 @@ Ficam em `src/simulacao/inimigos.ts`. Todo golpe segue as três fases de `acoes.
 
 ## Chefe que reage ao jogador
 
-Vale para o golem (chefe e mini-chefe). Vem do protótipo aprovado em `prototipos/chefe-dash/` (task-5). Todos os números ficam em `dados/` e aparecem no painel.
+Vale para o golem (chefe e mini-chefe). Vem do protótipo aprovado em `prototipos/chefe-dash/` (task-5). Todos os números ficam em `dados/` e aparecem no painel. O avanço e os estilos estão em `src/simulacao/cerebroGolem.ts` e `dados/avanco-golem.json`, `dados/estilos-golem.json`.
 
 ### Avanço (dash)
 

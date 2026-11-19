@@ -1,0 +1,14 @@
+{
+  "tempoMinimo": 4,
+  "margemTroca": 0.12,
+  "notaMinima": 0.3,
+  "memoria": 1,
+  "esquecerFuga": 5,
+  "esquecerEsquivaE": 20,
+  "esquecerAgressao": 12,
+  "esquivasNotaCheia": 2,
+  "agressoesNotaCheia": 5,
+  "fugaVelocidade": 0.5,
+  "distanciaAmeaca": 1.5,
+  "distanciaAgressao": 2
+}

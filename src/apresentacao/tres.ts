@@ -84,6 +84,8 @@ export const CORES = {
   marca: "#c77dff",
   pocao: "#6fd08c",
   golpe: { circulo: "#3d55e8", saturno: "#f0c419", linha: "#2fc46a" },
+  /** Avanço (dash) do golem: laranja, como no protótipo. */
+  avanco: "#ff9f43",
   horda: { reto: "#e08a3c", area: "#d46a9f", leque: "#3cc4c4" },
   lugar: { fogueira: "#ff9f43", dungeon: "#b9a3ff", chefe: "#c94a4a", bau: "#ffd166", emboscada: "#e08a3c" },
 };

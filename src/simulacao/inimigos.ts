@@ -1,8 +1,10 @@
 // Os inimigos da luta: o golem (chefe e mini-chefe) e a horda, com os disparos e as áreas no chão.
 // Todo golpe segue as três fases; o preparo é o aviso que o jogador vê.
-import { avancarAcao, fasesDe, iniciarAcao, type AcaoEmCurso } from "./acao";
+import { avancarAcao, fasesDaAcao, iniciarAcao, type AcaoEmCurso } from "./acao";
 import { sortear } from "./aleatorio";
-import { atingirJogador, type Inimigo, type Mundo } from "./luta";
+import { atualizarPerfil, decidirAvanco, escolherEstilo } from "./cerebroGolem";
+import type { MotivoAvanco } from "./eventos";
+import { atingirJogador, dentroDaArena, type CerebroGolem, type Inimigo, type Mundo } from "./luta";
 import { DT, emPassos } from "./tempo";
 import { direcao, distancia, girar, limitar, moverEmDirecao, type Vetor } from "./vetor";
 
@@ -26,7 +28,7 @@ function andarAteJogador(mundo: Mundo, i: Inimigo, velocidade: number): void {
  */
 function avancarGolpe(mundo: Mundo, i: Inimigo, efeito: (acao: AcaoEmCurso) => void): void {
   const acao = i.acao!;
-  for (const fase of avancarAcao(acao, fasesDe(mundo.dados, acao.tipo))) {
+  for (const fase of avancarAcao(acao, fasesDaAcao(mundo.dados, acao))) {
     if (fase === "ativo") {
       efeito(acao);
       if (i.acao !== acao) return; // aparado
@@ -41,8 +43,17 @@ function atualizarGolem(mundo: Mundo, b: Inimigo): void {
   const j = mundo.jogador;
   b.recargas.saturno = Math.max(0, b.recargas.saturno - 1);
   b.recargas.linha = Math.max(0, b.recargas.linha - 1);
+  const c = b.cerebro!;
+  c.recargaAvanco = Math.max(0, c.recargaAvanco - 1);
+  if (c.recargaAvanco === 0) c.segurando += 1;
+  atualizarPerfil(mundo, b, c);
+  escolherEstilo(mundo, b, c);
   if (b.atordoado > 0) {
     b.atordoado -= 1;
+    return;
+  }
+  if (b.acao?.tipo === "avancoGolem") {
+    avancarAvanco(mundo, b);
     return;
   }
   if (b.acao) {
@@ -50,6 +61,13 @@ function atualizarGolem(mundo: Mundo, b: Inimigo): void {
     if (b.acao.tipo === "saturno" && b.acao.fase === "preparo") andarAteJogador(mundo, b, golpeSaturno.velocidadeAndando);
     avancarGolpe(mundo, b, (acao) => resolverGolpe(mundo, b, acao));
     return;
+  }
+  if (c.recargaAvanco === 0) {
+    const motivo = decidirAvanco(mundo, b, c);
+    if (motivo) {
+      comecarAvanco(mundo, b, c, motivo);
+      return;
+    }
   }
   const d = distancia(j.pos, b.pos);
   const comecar = (golpe: "circulo" | "saturno" | "linha") => (b.acao = iniciarAcao(golpe, direcao(b.pos, j.pos)));
@@ -61,6 +79,50 @@ function atualizarGolem(mundo: Mundo, b: Inimigo): void {
     comecar("linha");
     b.recargas.linha = emPassos(golpeLinha.recarga);
   } else andarAteJogador(mundo, b, golem.velocidade);
+}
+
+/**
+ * Começa o aviso do avanço. A direção trava aqui, mirando onde o jogador vai estar quando o aviso acabar
+ * (sem contar o pico de velocidade do E). Para um pouco antes de encostar.
+ */
+function comecarAvanco(mundo: Mundo, b: Inimigo, c: CerebroGolem, motivo: MotivoAvanco): void {
+  const { avancoGolem: A, personagem } = mundo.dados;
+  const j = mundo.jogador;
+  const v = c.velocidadeJogador;
+  const rapidez = Math.hypot(v.x, v.y);
+  const corte = rapidez > personagem.velocidade ? personagem.velocidade / rapidez : 1;
+  const t = A.preparo + A.previsao;
+  const previsto = dentroDaArena(mundo, { x: j.pos.x + v.x * corte * t, y: j.pos.y + v.y * corte * t }, personagem.raio);
+  const acao = iniciarAcao("avancoGolem", direcao(b.pos, previsto, direcao(b.pos, j.pos)));
+  acao.distancia = limitar(distancia(b.pos, previsto) - (b.raio + personagem.raio + A.folgaEncostar), A.distanciaMinima, A.distancia);
+  acao.percorrido = 0;
+  b.acao = acao;
+  c.recargaAvanco = emPassos(A.recarga);
+  c.segurando = 0;
+  c.motivo = motivo;
+  mundo.eventos.push({ tipo: "avancoGolem", inimigo: b.id, motivo });
+}
+
+/** Avança o avanço: corre na fase ativa; no fim, emenda um círculo com aviso curto se chegou perto do jogador. */
+function avancarAvanco(mundo: Mundo, b: Inimigo): void {
+  const { avancoGolem: A, golpeCirculo } = mundo.dados;
+  const acao = b.acao!;
+  for (const fase of avancarAcao(acao, fasesDaAcao(mundo.dados, acao))) {
+    if (fase !== "fim") continue;
+    b.acao = null;
+    const j = mundo.jogador;
+    if (distancia(j.pos, b.pos) <= golpeCirculo.raio + A.emendarAte) {
+      b.acao = iniciarAcao("circulo", direcao(b.pos, j.pos));
+      b.acao.emendado = true;
+    }
+    return;
+  }
+  if (acao.fase === "ativo") {
+    const falta = (acao.distancia ?? 0) - (acao.percorrido ?? 0);
+    const p = Math.max(0, Math.min(A.velocidade * DT, falta));
+    b.pos = { x: b.pos.x + acao.direcao.x * p, y: b.pos.y + acao.direcao.y * p };
+    acao.percorrido = (acao.percorrido ?? 0) + p;
+  }
 }
 
 /** O golpe do golem acontece: confere se o jogador estava dentro da área. */

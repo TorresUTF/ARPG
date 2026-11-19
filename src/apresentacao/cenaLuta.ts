@@ -1,7 +1,7 @@
 // A cena 3D da arena de luta e o desenho por cima dela (vida, recargas, textos).
 // Lê o estado da luta e os efeitos; nunca altera nada da simulação.
 import * as THREE from "three";
-import { fasesDe, progressoDaFase } from "../simulacao/acao";
+import { fasesDaAcao, fasesDe, progressoDaFase } from "../simulacao/acao";
 import type { TeclaHabilidade } from "../simulacao/comandos";
 import type { Inimigo, Mundo } from "../simulacao/mundo";
 import { inimigoMaisPerto } from "../simulacao/mundo";
@@ -10,7 +10,7 @@ import { distancia, type Vetor } from "../simulacao/vetor";
 import chaoUrl from "./arte/chao.png";
 import type { CameraJogo, ModoCameraLuta } from "./camera3d";
 import type { Efeitos, GolpeVisto } from "./efeitos";
-import { DURACAO } from "./efeitos";
+import { DURACAO, TEXTO_ESTILO } from "./efeitos";
 import {
   animarGolem,
   animarHorda,
@@ -284,9 +284,15 @@ export class CenaLuta {
     }
     for (const a of efeitos.areas) this.circulo(a.pos.x, a.pos.y, d.disparo.raioArea, `rgba(255,80,80,${0.75 * a.t / DURACAO.area})`, null);
     for (const i of m.inimigos) {
-      if (i.tipo === "golem" && i.acao?.fase === "preparo" && i.acao.tipo !== "disparo") {
+      if (i.tipo === "golem" && i.acao?.tipo === "avancoGolem" && i.acao.fase === "preparo") {
+        // aviso do avanço: faixa laranja na direção travada, do tamanho do avanço
+        const frac = progressoDaFase(i.acao, fasesDaAcao(d, i.acao));
+        const L = (i.acao.distancia ?? d.avancoGolem.distancia) + i.raio;
+        this.linhaMira(i.pos, i.acao.direcao, L, "rgba(255,159,67,0.35)", i.raio * 2 * GE);
+        this.linhaMira(i.pos, i.acao.direcao, L * frac, "rgba(255,159,67,0.7)", i.raio * 2 * GE);
+      } else if (i.tipo === "golem" && i.acao?.fase === "preparo" && i.acao.tipo !== "disparo") {
         const golpe = i.acao.tipo as GolpeVisto["golpe"];
-        const frac = progressoDaFase(i.acao, fasesDe(d, i.acao.tipo));
+        const frac = progressoDaFase(i.acao, fasesDaAcao(d, i.acao));
         const mostrar = opcoes.aviso === "completa" || (opcoes.aviso === "parcial" && frac >= d.golem.mostrarAreaEm);
         if (mostrar) {
           this.formaGolpe(m, golpe, i.pos, i.acao.direcao, 1, "rgba(255,70,70,0.16)", CORES.perigo);
@@ -387,15 +393,24 @@ export class CenaLuta {
     for (const i of m.inimigos) {
       const modelo = this.modeloPara(i);
       const clarao = (efeitos.clarao.get(i.id) ?? 0) / DURACAO.clarao;
-      const progresso = i.acao ? progressoDaFase(i.acao, fasesDe(d, i.acao.tipo)) : 0;
+      const progresso = i.acao ? progressoDaFase(i.acao, fasesDaAcao(d, i.acao)) : 0;
       const mira = i.acao?.direcao ?? { x: 1, y: 0 };
       if (modelo.tipo === "golem") {
         const golpe = efeitos.golpes.get(i.id);
         animarGolem(modelo.r, {
           x: i.pos.x,
           y: i.pos.y,
-          estado: i.atordoado > 0 ? "atordoado" : i.acao?.fase === "preparo" ? "preparo" : i.acao ? "recuperacao" : "perseguir",
-          golpe: i.acao && i.acao.tipo !== "disparo" ? (i.acao.tipo as GolpeVisto["golpe"]) : null,
+          estado:
+            i.atordoado > 0
+              ? "atordoado"
+              : i.acao?.fase === "preparo"
+                ? "preparo"
+                : i.acao?.tipo === "avancoGolem" && i.acao.fase === "ativo"
+                  ? "perseguir"
+                  : i.acao
+                    ? "recuperacao"
+                    : "perseguir",
+          golpe: !i.acao || i.acao.tipo === "disparo" ? null : i.acao.tipo === "avancoGolem" ? "avanco" : (i.acao.tipo as GolpeVisto["golpe"]),
           progresso,
           mira,
           jogador: j.pos,
@@ -535,6 +550,31 @@ export class CenaLuta {
       hud.font = "14px " + FONTE;
       hud.fillStyle = CORES.texto;
       hud.fillText(`${nomeDoLugar} · ${m.inimigos.length} inimigos · semente ${m.semente}`, VL - 14, 24);
+      // estilo do avanço do chefe, a recarga dele e o motivo do último avanço
+      const chefe = m.inimigos.find((i) => i.cerebro);
+      if (chefe?.cerebro) {
+        const c = chefe.cerebro, est = TEXTO_ESTILO[c.estilo];
+        hud.textAlign = "left";
+        hud.font = "600 15px " + FONTE;
+        hud.fillStyle = CORES.avanco;
+        hud.fillText(`Chefe: ${est.nome}`, 14, 24);
+        hud.font = "13px " + FONTE;
+        hud.fillStyle = CORES.fraco;
+        hud.fillText(est.porque, 14, 44);
+        const total = d.avancoGolem.recarga > 0 ? c.recargaAvanco * DT / d.avancoGolem.recarga : 0;
+        hud.fillStyle = "rgba(10,12,18,0.8)";
+        hud.fillRect(14, 52, 120, 6);
+        hud.fillStyle = total > 0 ? "rgba(255,159,67,0.45)" : CORES.avanco;
+        hud.fillRect(14, 52, 120 * (1 - Math.min(1, total)), 6);
+        if (efeitos.chefeT > 0) {
+          hud.globalAlpha = Math.min(1, efeitos.chefeT);
+          hud.textAlign = "center";
+          hud.font = "600 18px " + FONTE;
+          hud.fillStyle = CORES.avanco;
+          hud.fillText(efeitos.chefe, VL / 2, 64);
+          hud.globalAlpha = 1;
+        }
+      }
     }
   }
 }
