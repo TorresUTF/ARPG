@@ -1,9 +1,10 @@
 ---
 id: TASK-6
 title: Escrever o design do chefe que reage ao jogador
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-11-19T12:10:00Z'
+updated_date: '2026-11-19T12:30:00Z'
 labels: []
 milestone: m-2
 dependencies:
@@ -21,8 +22,14 @@ Design: VISAO.md#O chefe
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 A seção descreve como o chefe fecha a distância de quem só foge (o avanço)
-- [ ] #2 A seção descreve como o chefe varia a ordem dos golpes conforme o jogador
-- [ ] #3 A seção diz quais golpes podem ser virados contra o chefe, além do aparo (R)
-- [ ] #4 Gabriel aprova o texto
+- [x] #1 A seção descreve como o chefe fecha a distância de quem só foge (o avanço)
+- [x] #2 A seção descreve como o chefe varia a ordem dos golpes conforme o jogador
+- [x] #3 A seção diz quais golpes podem ser virados contra o chefe, além do aparo (R)
+- [x] #4 Gabriel aprova o texto
 <!-- AC:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Seção 'Chefe que reage ao jogador' em design/inimigos.md, a partir do protótipo chefe-dash e das respostas do Gabriel nos critérios (golpes que acertam ficam mais frequentes; o R basta). Critérios de aceite de task-7 e task-8 preenchidos a partir dela.
+<!-- SECTION:FINAL_SUMMARY:END -->
