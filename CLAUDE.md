@@ -40,6 +40,8 @@ Arquivo: `rules/tecnologia.md`
 Jogo de ação visto de cima com chefes e controle de MOBA.
 Antes de qualquer trabalho, leia `VISAO.md`: ele define o que o jogo é e o que não é.
 
+> Não leia .sweep-archive/ nem backlog/archive/, e não rode backlog task view de IDs arquivados: são registros arquivados pelo /sweep.
+
 ## Sobre o autor
 
 - Trabalha sozinho e não é programador experiente. Explique as mudanças em português claro, sem jargão desnecessário.

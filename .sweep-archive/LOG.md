@@ -1,0 +1,6 @@
+- 2026-11-19 | backlog task archive task-5 | Validar o protótipo do chefe com avanço | Done comprovado (validacao) | PR #18, verificar verde
+- 2026-11-19 | backlog task archive task-7 | Avanço do chefe que se adapta ao jogador | Done comprovado | PR #20, 17 testes "task-7 AC"
+- 2026-11-19 | backlog task archive task-8 | Chefe varia a ordem dos golpes conforme o jogador | Done comprovado | PR #21, 10 testes "task-8 AC"
+- 2026-11-19 | backlog task archive task-10 | Validar a luta contra o chefe que reage | Done comprovado (validacao) | PR #22, verificar verde
+- 2026-11-19 | arquivo | planejamento/plano-primeira-versao.md | substituído pelo Backlog.md (milestones m-0..m-2, task-1..10 Done); os 3 passos feitos | PRs #2, #10, #16, #20, #21, #22
+- 2026-11-19 | arquivo | planejamento/prototipo-chefe-dash.md | DONE: protótipo, estilos e painel feitos; autor aprovou (TASK-5) e o chefe entrou em src/ (TASK-7) | PRs #12, #18, #20
