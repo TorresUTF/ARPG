@@ -3,10 +3,10 @@ id: TASK-13
 title: >-
   Protótipo rodada 2: varredura em linha, salto, ritmo quebrado e ajustes de
   número
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-11-20T12:29:00Z'
-updated_date: '2026-11-20T12:35:00Z'
+updated_date: '2026-11-20T12:36:00Z'
 labels:
   - substitui-task-11
 milestone: m-3
@@ -27,9 +27,9 @@ Segunda rodada do protótipo de prototipos/esquiva-pulo/, a partir do feedback d
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Varredura em linha: a varredura do chefe é uma linha que passa de um lado ao outro e causa dano quando cruza o jogador sem proteção; continua rasteira
-- [ ] #2 Salto: o chefe pula e causa dano em área ao aterrissar, sem anel de aviso; o aviso mostra onde ele vai cair
-- [ ] #3 Ritmo: o chefe dá um sprint antes do combo e alterna rajada agressiva com janela para kitar; recuperações menores
-- [ ] #4 Números: vida do chefe maior, D mais curto em relação ao E e energia ajustada, todos ainda controles no painel
+- [x] #1 Varredura em linha: a varredura do chefe é uma linha que passa de um lado ao outro e causa dano quando cruza o jogador sem proteção; continua rasteira
+- [x] #2 Salto: o chefe pula e causa dano em área ao aterrissar, sem anel de aviso; o aviso mostra onde ele vai cair
+- [x] #3 Ritmo: o chefe dá um sprint antes do combo e alterna rajada agressiva com janela para kitar; recuperações menores
+- [x] #4 Números: vida do chefe maior, D mais curto em relação ao E e energia ajustada, todos ainda controles no painel
 - [ ] #5 As respostas (a) a (g) do brief, na interação 2, estão todas marcadas como sim (em (f), sim significa que a mana não impediu o uso das habilidades)
 <!-- AC:END -->
