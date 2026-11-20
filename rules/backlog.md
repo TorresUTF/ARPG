@@ -36,6 +36,7 @@
 7. Com a validação ligada, termine cada milestone com um ticket de validação. Ele tem o rótulo `validacao`, tem o autor como responsável, traz o roteiro de teste nos critérios de aceite e depende de todos os tickets de implementação do milestone.
 8. Numa nova decomposição de um design revisado, compare o design com o código, não com os tickets antigos. Crie tickets só para a diferença. Ponha o rótulo `obsoleto` nos To Do que deixaram de valer.
 9. Mostre a lista criada ao autor e espere o ok antes de implementar.
+10. Na trilha Estrutura (veja `rules/processo.md`), o protótipo vem antes do draft. Por isso o ticket do protótipo (tipo spike) e o ticket de validação dele citam o brief como origem: `Design: <concepts_brief>.md#<seção>`, e os critérios de aceite deles vêm do brief. Os tickets de implementação continuam saindo só do draft aprovado e dependem do ticket de validação do protótipo.
 
 ## Próximo ticket
 É o primeiro `To Do` sem o rótulo `validacao` cujas dependências estão todas Done, na ordem de `backlog task list`. Se nenhum ticket se encaixar, diga isso ao autor e não escolha outro.
