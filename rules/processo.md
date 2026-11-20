@@ -17,7 +17,7 @@ Classifique todo pedido em uma trilha antes de começar. Na dúvida, pergunte ao
 |---|---|---|---|
 | **Ajuste** | Mudar um número | Altere direto em `dados/`. Sem documento, sem revisão, sem plano. | Ticket com o rótulo `ajuste` e um teste que confere o valor em `dados/`. |
 | **Comportamento** | Mudança pequena dentro de um sistema que já existe | Implemente direto. Ao final, atualize o documento do sistema em `design/` com uma linha. | Ticket com teste dos critérios de aceite. |
-| **Estrutura** | Sistema novo, ou mudança que atravessa vários sistemas | Primeiro um protótipo em `prototipos/`. Só depois de o autor testar e aprovar, processo EGM completo. | Protótipo, depois EGM, depois decomposição em milestone. |
+| **Estrutura** | Sistema novo, ou mudança que atravessa vários sistemas | Primeiro o brainstorm EGM (`/egm:egm-brainstorm`, gera um `concepts_brief*.md`). Depois, um protótipo em `prototipos/`. Só depois de o autor testar e aprovar o protótipo, o draft EGM (`/egm:egm-draft`, que é o design), a decomposição em tickets e a implementação em `src/`. | Protótipo e validação dele (citam o brief), depois draft EGM, depois decomposição do draft em milestone. |
 
 Não use o processo EGM para as trilhas de Ajuste e Comportamento.
 
