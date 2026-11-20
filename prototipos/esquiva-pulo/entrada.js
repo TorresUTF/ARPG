@@ -78,6 +78,11 @@ chave("Som da recarga", "check", 0, () => somRecarga, v => somRecarga = v);
 chave("Direção do D:", "sel", [["mouse", "Mouse"], ["movimento", "Movimento"]], () => SW.dirD, v => SW.dirD = v);
 
 // ===== Painel de números =====
+// Os números mudados ficam guardados neste navegador (se ele deixar) e voltam ao recarregar a página.
+const GUARDA = "esquiva-pulo:numeros";
+const alterados = () => Object.fromEntries(Object.keys(PADRAO).filter(k => C[k] !== PADRAO[k]).map(k => [k, C[k]]));
+function guardar() { try { localStorage.setItem(GUARDA, JSON.stringify(alterados())); } catch (_) {} }
+try { const g = JSON.parse(localStorage.getItem(GUARDA) || "{}"); for (const k in g) if (k in PADRAO && typeof g[k] === "number") C[k] = g[k]; } catch (_) {}
 const caixa = document.getElementById("ajustes");
 const campos = {};
 for (const a of AJUSTES) {
@@ -87,10 +92,15 @@ for (const a of AJUSTES) {
   d.innerHTML = `<label><span>${nome}</span><span></span></label><input type="range" min="${min}" max="${max}" step="${passoV}">`;
   const inp = d.querySelector("input"), val = d.querySelectorAll("span")[1];
   inp.value = C[id]; val.textContent = C[id];
-  inp.oninput = () => { C[id] = +inp.value; val.textContent = inp.value; verificarPiso(); };
+  inp.oninput = () => { C[id] = +inp.value; val.textContent = inp.value; verificarPiso(); guardar(); };
   campos[id] = { inp, val }; caixa.append(d);
 }
-document.getElementById("padrao").onclick = () => { Object.assign(C, PADRAO); for (const id in campos) { campos[id].inp.value = C[id]; campos[id].val.textContent = C[id]; } verificarPiso(); };
+document.getElementById("padrao").onclick = () => { Object.assign(C, PADRAO); for (const id in campos) { campos[id].inp.value = C[id]; campos[id].val.textContent = C[id]; } verificarPiso(); guardar(); };
+document.getElementById("copiar").onclick = async () => {
+  const texto = JSON.stringify(alterados(), null, 1), aviso = document.getElementById("copiado");
+  try { await navigator.clipboard.writeText(texto); aviso.textContent = "Copiado. Cole na conversa."; }
+  catch (_) { aviso.textContent = texto; }
+};
 function verificarPiso() {
   const el = document.getElementById("alerta"), r = [];
   if (C.preparoArco < C.pisoAviso) r.push("arco");
