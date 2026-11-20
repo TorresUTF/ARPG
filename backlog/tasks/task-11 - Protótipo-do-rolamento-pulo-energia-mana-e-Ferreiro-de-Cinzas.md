@@ -1,10 +1,10 @@
 ---
 id: TASK-11
 title: Protótipo do rolamento, pulo, energia, mana e Ferreiro de Cinzas
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-11-20T02:21:00Z'
-updated_date: '2026-11-20T03:02:00Z'
+updated_date: '2026-11-20T03:09:00Z'
 labels: []
 milestone: m-3
 dependencies:
