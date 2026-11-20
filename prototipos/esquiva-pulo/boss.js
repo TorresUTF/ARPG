@@ -23,26 +23,29 @@ function criarGolpe(nome, sentidoFixo) {
     // salto: o pouso é uma onda no chão (rasteira: dá para pular com F). O aviso mostra onde ele cai; o dano é em área na aterrissagem, onde o chefe pousa
     salto: { altura: "rasteiro", forma: "circulo", raio: C.raioSalto, prep: C.preparoSalto, ativo: C.ativoSalto, recup: C.recupSalto,
       sx: b.x, sy: b.y, cx: limitar(j.x, RAIO_B, LARG - RAIO_B), cy: limitar(j.y, RAIO_B, ALT - RAIO_B) },
+    // martelada: impacto pequeno onde o jogador está; a mira segue o jogador até pouco antes de cair
+    martelada: { altura: "inteiro", forma: "circulo", raio: C.raioMartelada, prep: C.preparoMartelada, ativo: C.ativoMartelada, recup: C.recupMartelada,
+      cx: j.x, cy: j.y },
     golem: { altura: "inteiro", forma: "circulo", raio: C.raioGolem, prep: C.preparoGolem, ativo: C.ativoGolem, recup: C.recupGolem },
   }[nome];
   Object.assign(g, def, { prep: passos(def.prep), ativo: passos(def.ativo), recup: passos(def.recup) });
   if (g.forma === "varre") g.a0 = Math.atan2(g.aimy, g.aimx) - g.sentido * g.ang;
   return g;
 }
-const ALCANCE_DO = { arco: () => C.alcanceArco * 0.9, varredura: () => C.raioVarredura * 0.8, combo: () => C.raioVarredura * 0.8, salto: () => C.alcanceSalto, golem: () => C.raioGolem * 0.75 };
+const ALCANCE_DO = { arco: () => C.alcanceArco * 0.9, varredura: () => C.raioVarredura * 0.8, combo: () => C.raioVarredura * 0.8, salto: () => C.alcanceSalto, martelada: () => C.alcanceMartelada, golem: () => C.raioGolem * 0.75 };
 function escolherGolpe() {
   const b = s.b, def = s.j.ultimaDefesa, folga = dist(s.j.x, s.j.y, b.x, b.y) - RAIO_B;
   if (SW.chefe === "golem") { b.pensamento = "golem: sempre o círculo"; return "golem"; }
   if (SW.travar !== "auto") { b.pensamento = "travado em " + SW.travar; return SW.travar; }
-  const pronto = b.recCombo <= 0;
-  // contra a última defesa: D -> rasteiro (o rolamento não cobre), F -> inteiro (o pulo não cobre), R -> combo
-  const peso = { arco: 1, varredura: 1, combo: pronto ? 1 : 0, salto: folga >= C.minSalto ? 1 : 0 };
-  if (def === "D") { peso.varredura = 3; if (pronto) peso.combo = 2; }
-  else if (def === "F") { peso.arco = 3; if (pronto) peso.combo = 2; }
-  else if (def === "R") { if (pronto) peso.combo = 4; peso.arco = 2; }
-  const soma = peso.arco + peso.varredura + peso.combo + peso.salto;
-  let r = Math.random() * soma, esc = "arco";
-  for (const k of ["arco", "varredura", "combo", "salto"]) { if (r < peso[k]) { esc = k; break; } r -= peso[k]; }
+  // três golpes: foice (varredura) e salto são rasteiros (F), a martelada é inteira (D na hora certa).
+  // contra a última defesa: D -> rasteiro (fica no chão mais que a invencibilidade), F e R -> martelada (o pulo não cobre)
+  const peso = { varredura: 1, salto: folga >= C.minSalto ? 1 : 0, martelada: 1 };
+  if (def === "D") { peso.varredura = 3; if (peso.salto) peso.salto = 2; }
+  else if (def === "F") peso.martelada = 3;
+  else if (def === "R") peso.martelada = 2;
+  const soma = peso.varredura + peso.salto + peso.martelada;
+  let r = Math.random() * soma, esc = "varredura";
+  for (const k of ["varredura", "salto", "martelada"]) { if (r < peso[k]) { esc = k; break; } r -= peso[k]; }
   b.pensamento = "última defesa " + (def || "nenhuma") + " -> " + esc;
   return esc;
 }
@@ -56,7 +59,7 @@ const normal = a => Math.atan2(Math.sin(a), Math.cos(a));
 function emArea(g) {
   const b = s.b, j = s.j, d = dist(j.x, j.y, b.x, b.y);
   if (d >= g.raio + RAIO_J) return false;
-  if (g.forma === "circulo") return true;
+  if (g.forma === "circulo") return g.cx === undefined || dist(j.x, j.y, g.cx, g.cy) < g.raio + RAIO_J;
   if (g.forma === "varre") {
     // a lâmina é uma linha do chefe até o alcance; fere quando o ângulo dela passa pelo jogador
     const lamina = g.a0 + g.sentido * 2 * g.ang * (g.t + 0.5) / Math.max(1, g.ativo);
@@ -107,6 +110,10 @@ function passoGolpe() {
     if (d > RAIO_B + RAIO_J + 0.1) { const p = C.velChefe * C.velAtaque * DT; b.x += (j.x - b.x) / d * p; b.y += (j.y - b.y) / d * p; }
   }
   if (g.fase === "preparo") {
+    if (g.nome === "martelada" && g.prep - g.t > passos(C.travaMartelada)) {
+      const j = s.j, dj = dist(j.x, j.y, b.x, b.y) || 0.001, k = Math.min(1, C.alcanceMartelada / dj);
+      g.cx = b.x + (j.x - b.x) * k; g.cy = b.y + (j.y - b.y) * k;
+    }
     if (g.nome === "salto") { const k = (g.t + 1) / Math.max(1, g.prep); b.x = g.sx + (g.cx - g.sx) * k; b.y = g.sy + (g.cy - g.sy) * k; b.voo = Math.sin(Math.PI * k); }
     if (++g.t >= g.prep) { g.fase = "ativo"; g.t = 0; b.voo = 0; }
     return;

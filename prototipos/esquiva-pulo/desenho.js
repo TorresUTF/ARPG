@@ -19,7 +19,7 @@ function desenharAviso(g, b) {
   cv.save(); cv.translate(px(b.x), px(b.y));
   cv.fillStyle = cor; cv.strokeStyle = cor; cv.lineWidth = 2;
   cv.beginPath();
-  if (g.forma === "circulo") cv.arc(g.nome === "salto" ? px(g.cx - b.x) : 0, g.nome === "salto" ? px(g.cy - b.y) : 0, px(g.raio), 0, 7);
+  if (g.forma === "circulo") cv.arc(g.cx !== undefined ? px(g.cx - b.x) : 0, g.cx !== undefined ? px(g.cy - b.y) : 0, px(g.raio), 0, 7);
   else if (g.forma === "varre") { const a = g.a0, z = g.a0 + g.sentido * 2 * g.ang; cv.moveTo(0, 0); cv.arc(0, 0, px(g.raio), Math.min(a, z), Math.max(a, z)); cv.closePath(); }
   else { const a = Math.atan2(g.aimy, g.aimx); cv.moveTo(0, 0); cv.arc(0, 0, px(g.raio), a - g.ang, a + g.ang); cv.closePath(); }
   // a varredura mostra só o arco por onde a lâmina vai passar; o dano vem da lâmina, que aparece no ativo

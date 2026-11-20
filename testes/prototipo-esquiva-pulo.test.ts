@@ -208,7 +208,7 @@ describe("protótipo esquiva-pulo, rodada 2", () => {
     expect(resultados(m)).toEqual(["atingido"]);
     m = novo(); s = m.getS();
     s.b.x = 20; s.b.g = m.criarGolpe("salto"); s.b.estado = "golpe";
-    andar(m, m.passos(m.C.preparoSalto) - 20); m.comando("f", 10, 8); andar(m, 30);
+    andar(m, m.passos(m.C.preparoSalto) - 6); m.comando("f", 10, 8); andar(m, 40); // F pouco antes do pouso cobre a onda inteira
     expect(resultados(m)).toEqual(["esquivado pelo F"]);
     m = novo(); s = m.getS();
     s.b.x = 20; s.b.g = m.criarGolpe("salto"); s.b.estado = "golpe"; s.j.x = 2;
@@ -291,5 +291,32 @@ describe("protótipo esquiva-pulo, rodada 2", () => {
     expect(C.regenMana).toBeLessThan(6);
     expect(C.custoE).toBeGreaterThan(10);
     expect(C.recargaE).toBeGreaterThan(6);
+  });
+
+  it("task-13 AC2: a martelada é inteira, mira no jogador até pouco antes de cair, e só o D na hora certa escapa", () => {
+    let m = novo(); let s = m.getS();
+    s.b.g = m.criarGolpe("martelada"); s.b.estado = "golpe";
+    expect(s.b.g.altura).toBe("inteiro");
+    andar(m, 10); s.j.y = 9; andar(m, 2); // a mira segue o jogador
+    expect(s.b.g.cy).toBeGreaterThan(8.5);
+    m = novo(); s = m.getS(); s.b.g = m.criarGolpe("martelada"); s.b.estado = "golpe";
+    andar(m, s.b.g.prep - 4); m.comando("f", 10, 8); andar(m, 20);
+    expect(resultados(m)).toEqual(["atingido"]);
+    m = novo(); s = m.getS(); s.b.g = m.criarGolpe("martelada"); s.b.estado = "golpe";
+    andar(m, s.b.g.prep - 4); m.comando("d", 10, 2); andar(m, 20);
+    expect(resultados(m)).toEqual(["esquivado pelo D"]);
+  });
+
+  it("task-13 AC2: na escolha automática o Ferreiro usa só foice, salto e martelada", () => {
+    const m = novo(); const s = m.getS(); m.SW.travar = "auto"; s.b.x = 20; s.j.x = 2;
+    const vistos = new Set<string>();
+    for (const def of [null, "D", "F", "R"]) { s.j.ultimaDefesa = def; for (let i = 0; i < 200; i++) vistos.add(m.escolherGolpe()); }
+    expect([...vistos].sort()).toEqual(["martelada", "salto", "varredura"]);
+  });
+
+  it("task-13 AC1: a espessura da foice é menor e tem controle no painel", () => {
+    const m = novo();
+    expect(m.C.larguraLamina).toBeLessThan(1);
+    expect(m.AJUSTES.some((a: any[]) => a[0] === "larguraLamina")).toBe(true);
   });
 });

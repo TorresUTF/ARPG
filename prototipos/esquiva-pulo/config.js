@@ -26,11 +26,13 @@ const PADRAO = {
   // Arco de lâmina (inteiro)
   alcanceArco: 3.2, anguloArco: 50, preparoArco: 0.6, ativoArco: 0.15, recupArco: 0.45,
   // Varredura de solo (rasteira)
-  raioVarredura: 3.5, anguloVarredura: 110, larguraLamina: 1.0, preparoVarredura: 0.5, rasteiroAtivo: 0.35, recupVarredura: 0.45, recupPunida: 1.0,
+  raioVarredura: 3.5, anguloVarredura: 110, larguraLamina: 0.5, preparoVarredura: 0.5, rasteiroAtivo: 0.35, recupVarredura: 0.45, recupPunida: 1.0,
   // Combo Martelo e Foice
   avisoCombo: 1.2, intervaloCombo: 0.5, alcanceFoice: 3.2, anguloFoice: 70, ativoFoice: 0.25, castigoCombo: 1.0, recargaCombo: 6,
   // Salto: o chefe pula até onde você estava e causa dano em área ao aterrissar
-  raioSalto: 2.8, preparoSalto: 0.8, ativoSalto: 0.10, recupSalto: 0.6, alcanceSalto: 7, minSalto: 3.5,
+  raioSalto: 2.8, preparoSalto: 0.8, ativoSalto: 0.35, recupSalto: 0.6, alcanceSalto: 7, minSalto: 3.5,
+  // Martelada: de cima para baixo, mira no jogador até pouco antes de cair; só o D na hora certa escapa
+  raioMartelada: 1.2, alcanceMartelada: 3.0, preparoMartelada: 0.7, travaMartelada: 0.15, ativoMartelada: 0.10, recupMartelada: 0.5,
   // Sprint antes do combo e ritmo quebrado (rajada de golpes, depois janela para kitar)
   velSprint: 9, sprintMax: 0.5, sprintAlcance: 4,
   rajadaMin: 2, rajadaMax: 4, fatorRajada: 0.4, janelaKitar: 2.0, velJanela: 0.5,
@@ -90,13 +92,17 @@ const AJUSTES = [
   ["alcanceArco", "Arco: alcance (m)", 1, 6, 0.1], ["anguloArco", "Arco: meio-ângulo (graus)", 10, 90, 5],
   ["preparoArco", "Arco: aviso (s)", 0.2, 1.5, 0.05], ["ativoArco", "Arco: tempo ativo (s)", 0.02, 0.6, 0.01],
   ["recupArco", "Arco: recuperação (s)", 0, 2, 0.05],
-  ["raioVarredura", "Varredura: alcance da lâmina (m)", 1, 6, 0.1], ["anguloVarredura", "Varredura: meio-arco da lâmina (graus)", 30, 180, 5], ["larguraLamina", "Varredura: largura da lâmina (m)", 0.2, 2, 0.1], ["preparoVarredura", "Varredura: aviso (s)", 0.2, 1.5, 0.05],
+  ["raioVarredura", "Varredura: alcance da lâmina (m)", 1, 6, 0.1], ["anguloVarredura", "Varredura: meio-arco da lâmina (graus)", 30, 180, 5], ["larguraLamina", "Foice (varredura): espessura da lâmina (m)", 0.1, 2, 0.05], ["preparoVarredura", "Varredura: aviso (s)", 0.2, 1.5, 0.05],
   ["rasteiroAtivo", "Varredura: tempo ativo (s)", 0.05, 1, 0.01], ["recupVarredura", "Varredura: recuperação (s)", 0, 2, 0.05],
   ["recupPunida", "Varredura pulada: recuperação punida (s)", 0, 3, 0.1],
   ["#", "Ferreiro: salto"],
   ["raioSalto", "Salto: raio da aterrissagem (m)", 1, 5, 0.1], ["preparoSalto", "Salto: aviso e tempo no ar (s)", 0.3, 1.5, 0.05],
   ["ativoSalto", "Salto: tempo ativo (s)", 0.02, 0.6, 0.01], ["recupSalto", "Salto: recuperação (s)", 0, 2, 0.05],
   ["alcanceSalto", "Salto: usa a partir de (m)", 3, 12, 0.5], ["minSalto", "Salto: não usa mais perto que (m)", 1, 8, 0.5],
+  ["#", "Ferreiro: martelada"],
+  ["raioMartelada", "Martelada: raio do impacto (m)", 0.4, 3, 0.1], ["alcanceMartelada", "Martelada: alcance (m)", 1, 6, 0.1],
+  ["preparoMartelada", "Martelada: aviso (s)", 0.3, 1.5, 0.05], ["travaMartelada", "Martelada: mira trava antes de cair (s)", 0, 0.6, 0.01],
+  ["ativoMartelada", "Martelada: tempo ativo (s)", 0.02, 0.4, 0.01], ["recupMartelada", "Martelada: recuperação (s)", 0, 2, 0.05],
   ["#", "Ferreiro: sprint e ritmo quebrado"],
   ["velSprint", "Sprint antes do combo: velocidade (m/s)", 5, 16, 0.5], ["sprintMax", "Sprint: duração máxima (s)", 0.1, 1.5, 0.05],
   ["sprintAlcance", "Sprint: começa a partir de (m além do alcance)", 0, 8, 0.5],
