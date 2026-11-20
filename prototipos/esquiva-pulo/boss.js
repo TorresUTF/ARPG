@@ -8,20 +8,20 @@ function novoChefe() {
     marca: 0, cargas: 0, punido: false, pensamento: "", ultimo: "", rajada: sorteioRajada(), voo: 0 };
 }
 const rad = g => g * Math.PI / 180;
-function criarGolpe(nome) {
+function criarGolpe(nome, sentidoFixo) {
   const b = s.b, j = s.j, d = dist(j.x, j.y, b.x, b.y) || 1;
   const g = { nome, aimx: (j.x - b.x) / d, aimy: (j.y - b.y) / d, fase: "preparo", t: 0, resolvido: false, visto: null };
   const arco = { altura: "inteiro", forma: "cone", raio: C.alcanceArco, ang: rad(C.anguloArco), prep: C.preparoArco, ativo: C.ativoArco, recup: C.recupArco };
   // varredura: uma lâmina de um lado ao outro; fere quando passa pelo jogador
   const varr = { altura: "rasteiro", forma: "varre", raio: C.raioVarredura, ang: rad(C.anguloVarredura), lam: C.larguraLamina,
-    sentido: Math.random() < 0.5 ? 1 : -1, prep: C.preparoVarredura, ativo: C.rasteiroAtivo, recup: C.recupVarredura };
+    sentido: sentidoFixo || (Math.random() < 0.5 ? 1 : -1), prep: C.preparoVarredura, ativo: C.rasteiroAtivo, recup: C.recupVarredura };
   const def = {
     arco,
     varredura: varr,
     martelo: { ...varr, prep: C.avisoCombo, recup: 0 },
-    foice: { altura: "inteiro", forma: "cone", raio: C.alcanceFoice, ang: rad(C.anguloFoice), prep: C.intervaloCombo, ativo: C.ativoFoice, recup: C.castigoCombo },
-    // salto: o aviso mostra onde ele cai; o dano é em área na aterrissagem, onde o chefe pousa
-    salto: { altura: "inteiro", forma: "circulo", raio: C.raioSalto, prep: C.preparoSalto, ativo: C.ativoSalto, recup: C.recupSalto,
+    foice: { altura: "inteiro", forma: "varre", raio: C.alcanceFoice, ang: rad(C.anguloFoice), lam: C.larguraLamina, sentido: sentidoFixo || 1, prep: C.intervaloCombo, ativo: C.ativoFoice, recup: C.castigoCombo },
+    // salto: o pouso é uma onda no chão (rasteira: dá para pular com F). O aviso mostra onde ele cai; o dano é em área na aterrissagem, onde o chefe pousa
+    salto: { altura: "rasteiro", forma: "circulo", raio: C.raioSalto, prep: C.preparoSalto, ativo: C.ativoSalto, recup: C.recupSalto,
       sx: b.x, sy: b.y, cx: limitar(j.x, RAIO_B, LARG - RAIO_B), cy: limitar(j.y, RAIO_B, ALT - RAIO_B) },
     golem: { altura: "inteiro", forma: "circulo", raio: C.raioGolem, prep: C.preparoGolem, ativo: C.ativoGolem, recup: C.recupGolem },
   }[nome];
@@ -38,7 +38,7 @@ function escolherGolpe() {
   // contra a última defesa: D -> rasteiro (o rolamento não cobre), F -> inteiro (o pulo não cobre), R -> combo
   const peso = { arco: 1, varredura: 1, combo: pronto ? 1 : 0, salto: folga >= C.minSalto ? 1 : 0 };
   if (def === "D") { peso.varredura = 3; if (pronto) peso.combo = 2; }
-  else if (def === "F") { peso.arco = 3; if (peso.salto) peso.salto = 2; if (pronto) peso.combo = 2; }
+  else if (def === "F") { peso.arco = 3; if (pronto) peso.combo = 2; }
   else if (def === "R") { if (pronto) peso.combo = 4; peso.arco = 2; }
   const soma = peso.arco + peso.varredura + peso.combo + peso.salto;
   let r = Math.random() * soma, esc = "arco";
@@ -121,7 +121,7 @@ function passoGolpe() {
     if (b.estado !== "golpe") return;
     if (++g.t >= g.ativo) {
       if (!g.resolvido) resolver(g, g.visto ? "esquivado pelo " + g.visto : "fora da área");
-      if (g.nome === "martelo") { b.g = criarGolpe("foice"); return; } // o combo segue sem pausa
+      if (g.nome === "martelo") { b.g = criarGolpe("foice", -g.sentido); return; } // o combo segue sem pausa; a foice volta pelo caminho contrário
       g.fase = "recup"; g.t = 0; g.recupReal = fimDoGolpe(g);
     }
     return;

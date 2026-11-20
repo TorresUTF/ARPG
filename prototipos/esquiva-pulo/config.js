@@ -11,14 +11,14 @@ const PADRAO = {
   // Pulo (F)
   protegeF: 0.55, recupF: 0.10,
   // Mana
-  manaMax: 100, custoQ: 15, custoW: 20, custoE: 10, custoR: 15, regenMana: 6,
+  manaMax: 100, custoQ: 15, custoW: 20, custoE: 25, custoR: 15, regenMana: 3,
   // Ataque básico
   preparoAtaque: 0.25, recupAtaque: 0.20, alcance: 6, velProjetil: 20, danoAA: 2,
   // Q, W, E, R (versão enxuta das habilidades do chefe-dash)
   preparoQ: 0.20, recupQ: 0.15, alcanceQ: 9, velQ: 24, larguraQ: 0.5, danoQ: 10, recargaQ: 5,
   preparoW: 0.25, recupW: 0.15, alcanceW: 8, velW: 18, larguraW: 0.6, danoW: 4, recargaW: 8,
   duracaoMarca: 5, cargasMarca: 3, danoMarca: 15,
-  distE: 4, velE: 25, recupE: 0.10, recargaE: 6,
+  distE: 4, velE: 25, recupE: 0.10, recargaE: 10,
   janelaAparo: 0.25, recupAparo: 0.5, recargaAparo: 12, atordoamento: 1.5,
   guardarComando: 0.4,
   // Chefe (valores do Ferreiro; o golem usa só vidaChefe, velChefe e os números do golem)
@@ -28,7 +28,7 @@ const PADRAO = {
   // Varredura de solo (rasteira)
   raioVarredura: 3.5, anguloVarredura: 110, larguraLamina: 1.0, preparoVarredura: 0.5, rasteiroAtivo: 0.35, recupVarredura: 0.45, recupPunida: 1.0,
   // Combo Martelo e Foice
-  avisoCombo: 1.2, intervaloCombo: 0.5, alcanceFoice: 3.2, anguloFoice: 70, ativoFoice: 0.15, castigoCombo: 1.0, recargaCombo: 6,
+  avisoCombo: 1.2, intervaloCombo: 0.5, alcanceFoice: 3.2, anguloFoice: 70, ativoFoice: 0.25, castigoCombo: 1.0, recargaCombo: 6,
   // Salto: o chefe pula até onde você estava e causa dano em área ao aterrissar
   raioSalto: 2.8, preparoSalto: 0.8, ativoSalto: 0.10, recupSalto: 0.6, alcanceSalto: 7, minSalto: 3.5,
   // Sprint antes do combo e ritmo quebrado (rajada de golpes, depois janela para kitar)

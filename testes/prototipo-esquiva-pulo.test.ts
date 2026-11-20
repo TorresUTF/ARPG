@@ -197,7 +197,7 @@ describe("protótipo esquiva-pulo, rodada 2", () => {
     expect(resultados(m)).toEqual(["esquivado pelo F"]);
   });
 
-  it("task-13 AC2: o salto cai onde o jogador estava, fere em área na aterrissagem e o pulo não protege", () => {
+  it("task-13 AC2: o salto cai onde o jogador estava, fere em área na aterrissagem e dá para esquivar com o pulo (F)", () => {
     let m = novo(); let s = m.getS();
     s.b.x = 20; s.b.g = m.criarGolpe("salto"); s.b.estado = "golpe";
     expect(s.b.g.cx).toBe(10);
@@ -209,7 +209,7 @@ describe("protótipo esquiva-pulo, rodada 2", () => {
     m = novo(); s = m.getS();
     s.b.x = 20; s.b.g = m.criarGolpe("salto"); s.b.estado = "golpe";
     andar(m, m.passos(m.C.preparoSalto) - 20); m.comando("f", 10, 8); andar(m, 30);
-    expect(resultados(m)).toEqual(["atingido"]);
+    expect(resultados(m)).toEqual(["esquivado pelo F"]);
     m = novo(); s = m.getS();
     s.b.x = 20; s.b.g = m.criarGolpe("salto"); s.b.estado = "golpe"; s.j.x = 2;
     andar(m, 80);
@@ -270,5 +270,26 @@ describe("protótipo esquiva-pulo, rodada 2", () => {
     s.j.x = 2; s.b.x = 12; golpe(m, "golem"); s.b.g.t = 0;
     andar(m, 20);
     expect(s.b.x).toBe(12);
+  });
+
+  it("task-13 AC1: a foice também é uma lâmina, vem pelo caminho contrário do martelo e continua inteira", () => {
+    const m = novo(); const s = m.getS();
+    const martelo = m.criarGolpe("martelo");
+    const foice = m.criarGolpe("foice", -martelo.sentido);
+    expect(foice.forma).toBe("varre");
+    expect(foice.altura).toBe("inteiro");
+    expect(foice.sentido).toBe(-martelo.sentido);
+    s.b.g = foice; s.b.estado = "golpe"; foice.t = foice.prep - 1;
+    andar(m, 2);
+    expect(s.log).toEqual([]); // a lâmina ainda não chegou ao jogador
+    andar(m, 30);
+    expect(resultados(m)).toEqual(["atingido"]);
+  });
+
+  it("task-13 AC4: menos mana por segundo, E mais caro em mana e com recarga maior", () => {
+    const C = novo().C;
+    expect(C.regenMana).toBeLessThan(6);
+    expect(C.custoE).toBeGreaterThan(10);
+    expect(C.recargaE).toBeGreaterThan(6);
   });
 });
