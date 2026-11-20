@@ -22,7 +22,7 @@ const PADRAO = {
   janelaAparo: 0.25, recupAparo: 0.5, recargaAparo: 12, atordoamento: 1.5,
   guardarComando: 0.4,
   // Chefe (valores do Ferreiro; o golem usa só vidaChefe, velChefe e os números do golem)
-  vidaChefe: 200, velChefe: 4.0, impetoMax: 5.0, impetoSobe: 0.4,
+  vidaChefe: 200, velChefe: 4.0, impetoMax: 5.0, impetoSobe: 0.4, velAtaque: 0.5,
   // Arco de lâmina (inteiro)
   alcanceArco: 3.2, anguloArco: 50, preparoArco: 0.6, ativoArco: 0.15, recupArco: 0.45,
   // Varredura de solo (rasteira)
@@ -85,6 +85,7 @@ const AJUSTES = [
   ["velChefe", "Velocidade do chefe (m/s)", 1, 9, 0.1],
   ["impetoMax", "Ímpeto: velocidade máxima (m/s)", 1, 9, 0.1],
   ["impetoSobe", "Ímpeto: ganho (m/s por s)", 0, 2, 0.05],
+  ["velAtaque", "Andando durante o golpe: fração da velocidade", 0, 1, 0.05],
   ["#", "Ferreiro: arco e varredura"],
   ["alcanceArco", "Arco: alcance (m)", 1, 6, 0.1], ["anguloArco", "Arco: meio-ângulo (graus)", 10, 90, 5],
   ["preparoArco", "Arco: aviso (s)", 0.2, 1.5, 0.05], ["ativoArco", "Arco: tempo ativo (s)", 0.02, 0.6, 0.01],

@@ -101,6 +101,11 @@ function fimDoGolpe(g) {
 }
 function passoGolpe() {
   const b = s.b, g = b.g;
+  // o Ferreiro não fica parado no preparo e no ativo: segue andando até o jogador, mais devagar; a mira do golpe já está travada
+  if (SW.chefe === "ferreiro" && g.nome !== "salto" && g.fase !== "recup") {
+    const j = s.j, d = dist(j.x, j.y, b.x, b.y) || 0.001;
+    if (d > RAIO_B + RAIO_J + 0.1) { const p = C.velChefe * C.velAtaque * DT; b.x += (j.x - b.x) / d * p; b.y += (j.y - b.y) / d * p; }
+  }
   if (g.fase === "preparo") {
     if (g.nome === "salto") { const k = (g.t + 1) / Math.max(1, g.prep); b.x = g.sx + (g.cx - g.sx) * k; b.y = g.sy + (g.cy - g.sy) * k; b.voo = Math.sin(Math.PI * k); }
     if (++g.t >= g.prep) { g.fase = "ativo"; g.t = 0; b.voo = 0; }

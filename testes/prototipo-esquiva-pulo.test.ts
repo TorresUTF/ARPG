@@ -259,4 +259,16 @@ describe("protótipo esquiva-pulo, rodada 2", () => {
     const ids = new Set(m.AJUSTES.map((a: any[]) => a[0]));
     for (const k of ["vidaChefe", "distD", "energiaMax", "raioSalto", "anguloVarredura", "velSprint", "fatorRajada", "janelaKitar"]) expect(ids.has(k), k).toBe(true);
   });
+
+  it("task-13 AC3: o Ferreiro não fica parado no preparo do golpe: anda até o jogador, e o golem continua parado", () => {
+    let m = novo(); let s = m.getS();
+    s.j.x = 2; s.b.x = 12; golpe(m, "arco"); s.b.g.t = 0;
+    andar(m, 20);
+    expect(s.b.x).toBeLessThan(12);
+    expect(s.b.g.aimx).toBeLessThan(0); // a mira continua a do começo
+    m = novo(); s = m.getS(); m.SW.chefe = "golem";
+    s.j.x = 2; s.b.x = 12; golpe(m, "golem"); s.b.g.t = 0;
+    andar(m, 20);
+    expect(s.b.x).toBe(12);
+  });
 });
