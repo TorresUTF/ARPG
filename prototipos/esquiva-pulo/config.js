@@ -22,11 +22,11 @@ const PADRAO = {
   janelaAparo: 0.25, recupAparo: 0.5, recargaAparo: 12, atordoamento: 1.5,
   guardarComando: 0.4,
   // Chefe (valores do Ferreiro; o golem usa só vidaChefe, velChefe e os números do golem)
-  vidaChefe: 200, velChefe: 4.5, impetoMax: 5.0, impetoSobe: 0.7, velAtaque: 0.75,
+  vidaChefe: 200, velChefe: 4.5, impetoMax: 7, impetoSobe: 0.7, velAtaque: 0.75,
   // Arco de lâmina (inteiro)
-  alcanceArco: 4.5, anguloArco: 50, preparoArco: 0.6, ativoArco: 0.15, recupArco: 0.45,
+  alcanceArco: 4.5, anguloArco: 50, preparoArco: 0.45, ativoArco: 0.25, recupArco: 0.45,
   // Varredura de solo (rasteira)
-  raioVarredura: 4, anguloVarredura: 110, larguraLamina: 0.25, preparoVarredura: 0.5, rasteiroAtivo: 0.35, recupVarredura: 0.45, recupPunida: 1.0,
+  raioVarredura: 4, anguloVarredura: 110, larguraLamina: 0.25, preparoVarredura: 0.5, rasteiroAtivo: 0.4, recupVarredura: 0.45, recupPunida: 1.0,
   // Combo Martelo e Foice
   avisoCombo: 1.2, intervaloCombo: 0.5, alcanceFoice: 3.2, anguloFoice: 70, ativoFoice: 0.25, castigoCombo: 1.0, recargaCombo: 6,
   // Salto: o chefe pula até onde você estava e causa dano em área ao aterrissar
