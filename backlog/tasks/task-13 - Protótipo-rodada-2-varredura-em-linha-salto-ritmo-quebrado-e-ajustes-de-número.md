@@ -3,9 +3,10 @@ id: TASK-13
 title: >-
   Protótipo rodada 2: varredura em linha, salto, ritmo quebrado e ajustes de
   número
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-11-20T12:29:00Z'
+updated_date: '2026-11-20T12:32:00Z'
 labels: []
 milestone: m-3
 dependencies:
