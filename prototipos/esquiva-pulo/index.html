@@ -13,10 +13,11 @@ h1 { font-size:18px; margin:0; font-weight:600; }
 h2 { font-size:13px; margin:6px 0 0; grid-column:1/-1; text-transform:uppercase; letter-spacing:.04em; }
 .ajuda { color:var(--fraco); margin:0; line-height:1.5; }
 .ajuda b { color:var(--texto); }
-#palco { display:grid; }
-#palco:fullscreen { background:#000; place-items:center; }
+#palco { display:grid; position:relative; }
+#palco.cheia, #palco:fullscreen { position:fixed; inset:0; z-index:50; background:#000; place-items:center; }
 canvas { width:100%; max-width:100%; height:auto; display:block; background:var(--arena); border:1px solid var(--borda); border-radius:6px; cursor:crosshair; outline:none; }
-#palco:fullscreen canvas { width:min(100vw,150vh); border:0; border-radius:0; }
+#palco.cheia canvas, #palco:fullscreen canvas { width:min(100vw,150vh); max-width:none; border:0; border-radius:0; }
+#sair-cheia { position:absolute; top:12px; right:12px; }
 .barra { display:flex; flex-wrap:wrap; gap:8px 18px; align-items:center; color:var(--fraco); }
 button, select { font:inherit; background:var(--grade); color:var(--texto); border:1px solid var(--borda); border-radius:5px; padding:6px 12px; cursor:pointer; }
 button:hover { border-color:var(--jogador); }
@@ -37,7 +38,7 @@ summary { cursor:pointer; font-weight:600; }
   <p class="ajuda"><b>Botão direito</b>: mover. <b>Botão esquerdo</b> ou <b>A</b>: ataque básico. <b>Q W E R</b>: habilidades no mouse (custam mana). <b>D</b>: rolamento na direção do mouse (invencível, custa energia). <b>F</b>: pulo parado (protege só de golpe <b>rasteiro</b>, custa energia). <b>S</b>: parar. <b>Enter</b>: recomeçar. <b>L</b>: tela cheia.
   O aviso do golpe aparece no chão: <b>laranja</b> = rasteiro (pule com F), <b>vermelho</b> = inteiro (role com D). Ação recusada toca um bipe e mostra o motivo.</p>
   <p class="ajuda" id="foco"><b>Clique na arena</b> antes de usar o teclado.</p>
-  <div id="palco"><canvas id="tela" width="960" height="640" tabindex="0"></canvas></div>
+  <div id="palco"><canvas id="tela" width="960" height="640" tabindex="0"></canvas><button id="sair-cheia" type="button" hidden>Sair da tela cheia (L)</button></div>
   <div class="barra">
     <button id="recomecar" type="button">Recomeçar (Enter)</button>
     <button id="tela-cheia" type="button">Tela cheia (L)</button>

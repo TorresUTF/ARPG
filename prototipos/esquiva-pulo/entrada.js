@@ -22,7 +22,22 @@ tela.addEventListener("mousedown", e => {
   if (e.button === 2) { direito = true; comandoMover(mouse.x, mouse.y); } else if (e.button === 0) comandoAtacar();
 });
 window.addEventListener("mouseup", e => { if (e.button === 2) direito = false; });
-function alternarCheia() { if (document.fullscreenElement) document.exitFullscreen(); else document.getElementById("palco").requestFullscreen(); }
+// Tenta a tela cheia do navegador; se ele recusar (por exemplo, a página aberta dentro de outra), a arena ocupa a janela inteira.
+const palco = document.getElementById("palco"), botaoSair = document.getElementById("sair-cheia");
+const emTelaCheia = () => !!document.fullscreenElement || palco.classList.contains("cheia");
+const mostrarSair = () => { botaoSair.hidden = !emTelaCheia(); };
+async function alternarCheia() {
+  if (emTelaCheia()) {
+    palco.classList.remove("cheia");
+    if (document.fullscreenElement) { try { await document.exitFullscreen(); } catch (_) {} }
+  } else {
+    try { if (!palco.requestFullscreen) throw 0; await palco.requestFullscreen(); } catch (_) { palco.classList.add("cheia"); }
+  }
+  mostrarSair(); tela.focus({ preventScroll: true });
+}
+botaoSair.onclick = alternarCheia;
+document.addEventListener("fullscreenchange", () => { mostrarSair(); tela.focus({ preventScroll: true }); });
+window.addEventListener("keydown", e => { if (e.key === "Escape" && palco.classList.contains("cheia")) { palco.classList.remove("cheia"); mostrarSair(); } });
 tela.addEventListener("keydown", e => {
   ligarAudio();
   const k = e.key.toLowerCase();
