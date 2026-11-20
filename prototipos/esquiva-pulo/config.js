@@ -22,17 +22,17 @@ const PADRAO = {
   janelaAparo: 0.25, recupAparo: 0.5, recargaAparo: 12, atordoamento: 1.5,
   guardarComando: 0.4,
   // Chefe (valores do Ferreiro; o golem usa só vidaChefe, velChefe e os números do golem)
-  vidaChefe: 200, velChefe: 4.0, impetoMax: 5.0, impetoSobe: 0.4, velAtaque: 0.5,
+  vidaChefe: 200, velChefe: 4.5, impetoMax: 5.0, impetoSobe: 0.7, velAtaque: 0.75,
   // Arco de lâmina (inteiro)
-  alcanceArco: 3.2, anguloArco: 50, preparoArco: 0.6, ativoArco: 0.15, recupArco: 0.45,
+  alcanceArco: 4.5, anguloArco: 50, preparoArco: 0.6, ativoArco: 0.15, recupArco: 0.45,
   // Varredura de solo (rasteira)
-  raioVarredura: 3.5, anguloVarredura: 110, larguraLamina: 0.5, preparoVarredura: 0.5, rasteiroAtivo: 0.35, recupVarredura: 0.45, recupPunida: 1.0,
+  raioVarredura: 4, anguloVarredura: 110, larguraLamina: 0.25, preparoVarredura: 0.5, rasteiroAtivo: 0.35, recupVarredura: 0.45, recupPunida: 1.0,
   // Combo Martelo e Foice
   avisoCombo: 1.2, intervaloCombo: 0.5, alcanceFoice: 3.2, anguloFoice: 70, ativoFoice: 0.25, castigoCombo: 1.0, recargaCombo: 6,
   // Salto: o chefe pula até onde você estava e causa dano em área ao aterrissar
-  raioSalto: 2.8, preparoSalto: 0.8, ativoSalto: 0.35, recupSalto: 0.6, alcanceSalto: 7, minSalto: 3.5,
+  raioSalto: 3.2, preparoSalto: 0.8, ativoSalto: 0.35, recupSalto: 0.6, alcanceSalto: 7, minSalto: 3.5,
   // Martelada: de cima para baixo, mira no jogador até pouco antes de cair; só o D na hora certa escapa
-  raioMartelada: 1.2, alcanceMartelada: 3.0, preparoMartelada: 0.7, travaMartelada: 0.15, ativoMartelada: 0.10, recupMartelada: 0.5,
+  raioMartelada: 2.5, alcanceMartelada: 4, preparoMartelada: 0.7, travaMartelada: 0.1, ativoMartelada: 0.10, recupMartelada: 0.5,
   // Sprint antes do combo e ritmo quebrado (rajada de golpes, depois janela para kitar)
   velSprint: 9, sprintMax: 0.5, sprintAlcance: 4,
   rajadaMin: 2, rajadaMax: 4, fatorRajada: 0.4, janelaKitar: 2.0, velJanela: 0.5,
