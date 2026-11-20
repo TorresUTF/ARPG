@@ -19,11 +19,23 @@ function desenharAviso(g, b) {
   cv.save(); cv.translate(px(b.x), px(b.y));
   cv.fillStyle = cor; cv.strokeStyle = cor; cv.lineWidth = 2;
   cv.beginPath();
-  if (g.forma === "circulo") cv.arc(0, 0, px(g.raio), 0, 7);
+  if (g.forma === "circulo") cv.arc(g.nome === "salto" ? px(g.cx - b.x) : 0, g.nome === "salto" ? px(g.cy - b.y) : 0, px(g.raio), 0, 7);
+  else if (g.forma === "varre") { const a = g.a0, z = g.a0 + g.sentido * 2 * g.ang; cv.moveTo(0, 0); cv.arc(0, 0, px(g.raio), Math.min(a, z), Math.max(a, z)); cv.closePath(); }
   else { const a = Math.atan2(g.aimy, g.aimx); cv.moveTo(0, 0); cv.arc(0, 0, px(g.raio), a - g.ang, a + g.ang); cv.closePath(); }
-  cv.globalAlpha = g.fase === "ativo" ? 0.7 : 0.12 + 0.2 * prog; cv.fill();
+  // a varredura mostra só o arco por onde a lâmina vai passar; o dano vem da lâmina, que aparece no ativo
+  cv.globalAlpha = g.forma === "varre" ? 0.1 + 0.15 * prog : g.fase === "ativo" ? 0.7 : 0.12 + 0.2 * prog; cv.fill();
   cv.globalAlpha = 0.9; cv.stroke();
-  if (g.forma === "circulo" && g.fase === "preparo") { cv.beginPath(); cv.arc(0, 0, px(g.raio * prog), 0, 7); cv.stroke(); }
+  if (g.forma === "varre" && g.fase === "ativo") {
+    const l = g.a0 + g.sentido * 2 * g.ang * (g.t + 0.5) / Math.max(1, g.ativo);
+    cv.lineWidth = px(g.lam); cv.lineCap = "round"; cv.globalAlpha = 0.95; cv.strokeStyle = "#fff4d6";
+    cv.beginPath(); cv.moveTo(0, 0); cv.lineTo(Math.cos(l) * px(g.raio), Math.sin(l) * px(g.raio)); cv.stroke();
+  }
+  if (g.forma === "varre" && g.fase === "preparo") {
+    // seta com o sentido da varredura, na ponta inicial
+    const a = g.a0; cv.globalAlpha = 0.9; cv.lineWidth = 3; cv.strokeStyle = cor;
+    cv.beginPath(); cv.moveTo(Math.cos(a) * px(g.raio), Math.sin(a) * px(g.raio));
+    cv.lineTo(Math.cos(a + g.sentido * 0.35) * px(g.raio), Math.sin(a + g.sentido * 0.35) * px(g.raio)); cv.stroke();
+  }
   cv.restore();
 }
 function desenharArena() {
@@ -35,7 +47,10 @@ function desenharArena() {
   if (b.g) desenharAviso(b.g, b);
   // chefe
   const corB = b.estado === "atordoado" ? "#888" : b.g ? (b.g.altura === "rasteiro" ? COR.rasteiro : COR.inteiro) : SW.chefe === "golem" ? "#8a8f9c" : "#a8573a";
-  disco(b.x, b.y, RAIO_B, b.flash > 0 ? "#fff" : corB);
+  if (b.voo > 0) { cv.fillStyle = "rgba(0,0,0,.35)"; cv.beginPath(); cv.ellipse(px(b.x), px(b.y) + 8, px(RAIO_B), px(RAIO_B) * 0.5, 0, 0, 7); cv.fill(); }
+  cv.save(); cv.translate(0, -b.voo * 36);
+  disco(b.x, b.y, RAIO_B, b.flash > 0 ? "#fff" : b.estado === "sprint" ? "#ffe27a" : b.estado === "janela" ? "#6b7a99" : corB);
+  cv.restore();
   // barra de vida do chefe acima dele
   barra(px(b.x) - 30, px(b.y) - px(RAIO_B) - 14, 60, 6, b.vida / C.vidaChefe, COR.vida);
   // jogador
@@ -74,6 +89,8 @@ function desenharHud() {
   });
   if (s.recusaTexto) texto(s.recusaTexto.texto, 480, 570, "#ffb4b4", 18, "center");
   if (s.b.pensamento) texto("chefe: " + s.b.pensamento, 948, 20, COR.fraco, 12, "right");
+  if (s.b.estado === "sprint") texto("SPRINT!", px(s.b.x), px(s.b.y) - 50, "#ffe27a", 16, "center");
+  if (s.b.estado === "janela") texto("janela para kitar", px(s.b.x), px(s.b.y) - 50, "#9fb3d9", 14, "center");
   if (s.b.impeto > 0.05) texto("ímpeto +" + s.b.impeto.toFixed(2) + " m/s", 948, 38, COR.fraco, 12, "right");
   if (s.guard) texto("guardado: " + s.guard.tipo.toUpperCase(), 12, 90, COR.fraco, 12);
   if (pausado) texto("PAUSADO (. avança um passo)", 480, 120, "#fff", 18, "center");

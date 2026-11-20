@@ -50,7 +50,7 @@ function chave(rotulo, tipo, opcoes, get, set) {
   el.addEventListener("change", () => tela.focus()); l.append(el); document.getElementById("chaves").append(l);
 }
 chave("Chefe:", "sel", [["ferreiro", "Ferreiro de Cinzas"], ["golem", "Golem"]], () => SW.chefe, v => { SW.chefe = v; s.b.proximo = null; });
-chave("Travar golpe:", "sel", [["auto", "Automático"], ["arco", "Só arco"], ["varredura", "Só varredura"], ["combo", "Só combo"]], () => SW.travar, v => { SW.travar = v; s.b.proximo = null; });
+chave("Travar golpe:", "sel", [["auto", "Automático"], ["arco", "Só arco"], ["varredura", "Só varredura"], ["combo", "Só combo"], ["salto", "Só salto"]], () => SW.travar, v => { SW.travar = v; s.b.proximo = null; });
 chave("Energia infinita", "check", 0, () => SW.energiaInf, v => SW.energiaInf = v);
 chave("Mana:", "sel", [["normal", "Normal"], ["infinita", "Infinita"], ["desligada", "Desligada (sem custo e sem barra)"]], () => SW.mana, v => SW.mana = v);
 chave("Todos os golpes inteiros", "check", 0, () => SW.tudoInteiro, v => SW.tudoInteiro = v);
@@ -80,6 +80,7 @@ function verificarPiso() {
   const el = document.getElementById("alerta"), r = [];
   if (C.preparoArco < C.pisoAviso) r.push("arco");
   if (C.preparoVarredura < C.pisoAviso) r.push("varredura");
+  if (C.preparoSalto < C.pisoAviso) r.push("salto");
   if (C.avisoCombo < C.pisoAviso) r.push("martelo");
   if (C.intervaloCombo < C.pisoAviso) r.push("foice (intervalo do combo)");
   if (C.protegeF - C.rasteiroAtivo < 0.2) r.push("margem do pulo abaixo de 0,20 s");

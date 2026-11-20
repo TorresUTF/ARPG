@@ -6,8 +6,9 @@ title: >-
 status: In Progress
 assignee: []
 created_date: '2026-11-20T12:29:00Z'
-updated_date: '2026-11-20T12:32:00Z'
-labels: []
+updated_date: '2026-11-20T12:35:00Z'
+labels:
+  - substitui-task-11
 milestone: m-3
 dependencies:
   - TASK-11

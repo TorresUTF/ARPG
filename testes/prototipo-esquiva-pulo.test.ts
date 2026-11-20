@@ -28,13 +28,13 @@ const resultados = (m: any) => m.getS().log.map((l: string) => l.split(" | ")[3]
 
 describe("protótipo esquiva-pulo", () => {
   it("task-11 AC1: o rolamento protege de qualquer golpe; o pulo só do rasteiro", () => {
-    let m = novo(); golpe(m, "arco"); m.comando("d", 14, 8); andar(m, 60);
+    let m = novo(); golpe(m, "arco"); m.comando("d", 14, 8); andar(m, 20); // o chefe emenda outro golpe depois
     expect(resultados(m)).toEqual(["esquivado pelo D"]);
     m = novo(); golpe(m, "varredura"); m.comando("f", 10, 8); andar(m, 60);
     expect(resultados(m)).toEqual(["esquivado pelo F"]);
-    m = novo(); golpe(m, "arco"); m.comando("f", 10, 8); andar(m, 60);
+    m = novo(); golpe(m, "arco"); m.comando("f", 10, 8); andar(m, 20);
     expect(resultados(m)).toEqual(["atingido"]);
-    m = novo(); m.SW.tudoInteiro = true; golpe(m, "varredura"); m.comando("f", 10, 8); andar(m, 60);
+    m = novo(); m.SW.tudoInteiro = true; golpe(m, "varredura"); m.comando("f", 10, 8); andar(m, 25);
     expect(resultados(m)).toEqual(["atingido"]);
   });
 
@@ -55,7 +55,7 @@ describe("protótipo esquiva-pulo", () => {
 
   it("task-11 AC2: D e F gastam energia, com taxa fixa por esquiva em sequência", () => {
     const m = novo(); const s = m.getS();
-    m.comando("d", 14, 8); expect(s.j.energia).toBe(70);
+    m.comando("d", 14, 8); expect(s.j.energia).toBe(m.C.energiaMax - 30);
     andar(m, 30); // movimento do D acabou há pouco: o F é em sequência
     expect(m.custoEnergia("f")).toBe(35);
     s.j.energia = 100; s.j.acao = null; s.fimEsq = -9999;
@@ -141,7 +141,7 @@ describe("protótipo esquiva-pulo", () => {
     golpe(m, "varredura"); m.comando("f", 10, 8); andar(m, 60);
     expect(s.b.estado).toBe("golpe"); // ainda na recuperação punida (1,0 s), não na de 0,6 s
     m = novo(); s = m.getS(); s.j.rec.r = 0;
-    golpe(m, "martelo"); m.comando("r", 10, 8); andar(m, 2);
+    golpe(m, "martelo"); m.comando("r", 10, 8); andar(m, 15); // a lâmina da varredura passa pelo jogador no meio do ativo
     expect(resultados(m)).toEqual(["aparado"]);
     expect(s.b.estado).toBe("atordoado");
     andar(m, 80); // o atordoamento dura 90 passos e o segundo golpe do combo não vem
@@ -180,5 +180,83 @@ describe("protótipo esquiva-pulo", () => {
       "vidaChefe", "velChefe", "impetoMax", "raioVarredura", "frequenciaBipe", "duracaoBipe"];
     for (const k of doBrief) expect(ids.has(k), k).toBe(true);
     for (const k of ids as Set<string>) if (k !== "#") expect(k in m.PADRAO, k).toBe(true);
+  });
+});
+
+describe("protótipo esquiva-pulo, rodada 2", () => {
+  it("task-13 AC1: a varredura é uma lâmina que fere só quando passa pelo jogador, e continua rasteira", () => {
+    let m = novo(); golpe(m, "varredura");
+    expect(m.getS().b.g.altura).toBe("rasteiro");
+    andar(m, 3);
+    expect(m.getS().log).toEqual([]); // no começo do ativo a lâmina ainda não chegou
+    andar(m, 40);
+    expect(resultados(m)).toEqual(["atingido"]);
+    m = novo(); golpe(m, "varredura"); m.getS().j.x = 14; andar(m, 40); // fora do arco da lâmina
+    expect(resultados(m)).toEqual(["fora da área"]);
+    m = novo(); golpe(m, "varredura"); m.comando("f", 10, 8); andar(m, 25);
+    expect(resultados(m)).toEqual(["esquivado pelo F"]);
+  });
+
+  it("task-13 AC2: o salto cai onde o jogador estava, fere em área na aterrissagem e o pulo não protege", () => {
+    let m = novo(); let s = m.getS();
+    s.b.x = 20; s.b.g = m.criarGolpe("salto"); s.b.estado = "golpe";
+    expect(s.b.g.cx).toBe(10);
+    andar(m, m.passos(m.C.preparoSalto) - 1);
+    expect(s.log).toEqual([]);
+    andar(m, 3);
+    expect(Math.hypot(s.b.x - 10, s.b.y - 8)).toBeLessThan(0.01);
+    expect(resultados(m)).toEqual(["atingido"]);
+    m = novo(); s = m.getS();
+    s.b.x = 20; s.b.g = m.criarGolpe("salto"); s.b.estado = "golpe";
+    andar(m, m.passos(m.C.preparoSalto) - 20); m.comando("f", 10, 8); andar(m, 30);
+    expect(resultados(m)).toEqual(["atingido"]);
+    m = novo(); s = m.getS();
+    s.b.x = 20; s.b.g = m.criarGolpe("salto"); s.b.estado = "golpe"; s.j.x = 2;
+    andar(m, 80);
+    expect(resultados(m)).toEqual(["fora da área"]);
+  });
+
+  it("task-13 AC2: o aviso do salto não desenha o anel que encolhe", () => {
+    expect(ler("desenho.js")).not.toContain("raio * prog");
+  });
+
+  it("task-13 AC3: o chefe dá um sprint antes do combo quando está um pouco longe", () => {
+    const m = novo(); const s = m.getS();
+    m.SW.travar = "combo"; s.b.recCombo = 0; s.b.x = 17; s.j.x = 10;
+    const estados = new Set<string>();
+    for (let i = 0; i < 120; i++) { m.passo(); estados.add(s.b.estado); }
+    expect(estados.has("sprint")).toBe(true);
+    expect(s.log.length + (s.b.g ? 1 : 0)).toBeGreaterThan(0);
+  });
+
+  it("task-13 AC3: a rajada tem recuperação curta e o último golpe abre a janela para kitar", () => {
+    let m = novo(); let s = m.getS();
+    s.b.rajada = 2; golpe(m, "arco"); s.j.x = 1; andar(m, 15);
+    expect(s.b.g.recupReal).toBe(Math.round(m.passos(m.C.recupArco) * m.C.fatorRajada));
+    m = novo(); s = m.getS();
+    s.b.rajada = 1; golpe(m, "arco"); s.j.x = 1; andar(m, 15);
+    expect(s.b.g.recupReal).toBe(m.passos(m.C.recupArco));
+    andar(m, m.passos(m.C.recupArco) + 2);
+    expect(s.b.estado).toBe("janela");
+    andar(m, m.passos(m.C.janelaKitar) + 2);
+    expect(s.b.estado).not.toBe("janela");
+  });
+
+  it("task-13 AC3: as recuperações do chefe encolheram, sem tocar no aviso mínimo de 0,5 s", () => {
+    const C = novo().C;
+    expect(C.recupVarredura).toBeLessThanOrEqual(0.45);
+    expect(C.recupArco).toBeLessThanOrEqual(0.45);
+    expect(C.castigoCombo).toBeLessThan(1.5);
+    for (const k of ["preparoArco", "preparoVarredura", "avisoCombo", "intervaloCombo", "preparoSalto"]) expect(C[k]).toBeGreaterThanOrEqual(0.5);
+  });
+
+  it("task-13 AC4: mais vida do chefe, D mais curto que o E e energia menor, tudo no painel", () => {
+    const m = novo(); const C = m.C;
+    expect(C.vidaChefe).toBeGreaterThan(120);
+    expect(C.distD).toBeLessThan(C.distE);
+    expect(C.energiaMax).toBeLessThan(100);
+    expect(C.energiaMax).toBeGreaterThanOrEqual(C.custoF + C.custoD + C.taxaSequencia);
+    const ids = new Set(m.AJUSTES.map((a: any[]) => a[0]));
+    for (const k of ["vidaChefe", "distD", "energiaMax", "raioSalto", "anguloVarredura", "velSprint", "fatorRajada", "janelaKitar"]) expect(ids.has(k), k).toBe(true);
   });
 });

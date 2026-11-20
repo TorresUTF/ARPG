@@ -4,10 +4,10 @@ const PADRAO = {
   // Personagem
   velJogador: 5.5, vidaJogador: 5,
   // Energia
-  energiaMax: 100, custoD: 30, custoF: 20, taxaSequencia: 15, janelaSequencia: 0.6,
+  energiaMax: 85, custoD: 30, custoF: 20, taxaSequencia: 15, janelaSequencia: 0.6,
   esperaEnergia: 0.8, regenEnergia: 60,
   // Rolamento (D)
-  distD: 3, duracaoD: 0.30, invencivelD: 0.25, recupD: 0.15,
+  distD: 2.2, duracaoD: 0.30, invencivelD: 0.25, recupD: 0.15,
   // Pulo (F)
   protegeF: 0.55, recupF: 0.10,
   // Mana
@@ -22,13 +22,18 @@ const PADRAO = {
   janelaAparo: 0.25, recupAparo: 0.5, recargaAparo: 12, atordoamento: 1.5,
   guardarComando: 0.4,
   // Chefe (valores do Ferreiro; o golem usa só vidaChefe, velChefe e os números do golem)
-  vidaChefe: 120, velChefe: 4.0, impetoMax: 5.0, impetoSobe: 0.4,
+  vidaChefe: 200, velChefe: 4.0, impetoMax: 5.0, impetoSobe: 0.4,
   // Arco de lâmina (inteiro)
-  alcanceArco: 3.2, anguloArco: 50, preparoArco: 0.6, ativoArco: 0.15, recupArco: 0.5,
+  alcanceArco: 3.2, anguloArco: 50, preparoArco: 0.6, ativoArco: 0.15, recupArco: 0.45,
   // Varredura de solo (rasteira)
-  raioVarredura: 3.5, preparoVarredura: 0.5, rasteiroAtivo: 0.35, recupVarredura: 0.6, recupPunida: 1.0,
+  raioVarredura: 3.5, anguloVarredura: 110, larguraLamina: 1.0, preparoVarredura: 0.5, rasteiroAtivo: 0.35, recupVarredura: 0.45, recupPunida: 1.0,
   // Combo Martelo e Foice
-  avisoCombo: 1.2, intervaloCombo: 0.5, alcanceFoice: 3.2, anguloFoice: 70, ativoFoice: 0.15, castigoCombo: 1.5, recargaCombo: 6,
+  avisoCombo: 1.2, intervaloCombo: 0.5, alcanceFoice: 3.2, anguloFoice: 70, ativoFoice: 0.15, castigoCombo: 1.0, recargaCombo: 6,
+  // Salto: o chefe pula até onde você estava e causa dano em área ao aterrissar
+  raioSalto: 2.8, preparoSalto: 0.8, ativoSalto: 0.10, recupSalto: 0.6, alcanceSalto: 7, minSalto: 3.5,
+  // Sprint antes do combo e ritmo quebrado (rajada de golpes, depois janela para kitar)
+  velSprint: 9, sprintMax: 0.5, sprintAlcance: 4,
+  rajadaMin: 2, rajadaMax: 4, fatorRajada: 0.4, janelaKitar: 2.0, velJanela: 0.5,
   // Golem (modo de comparação)
   raioGolem: 2.6, preparoGolem: 0.7, ativoGolem: 0.10, recupGolem: 0.9,
   // Piso de aviso (só um alerta no painel: avisa se algum aviso ficar abaixo)
@@ -84,9 +89,19 @@ const AJUSTES = [
   ["alcanceArco", "Arco: alcance (m)", 1, 6, 0.1], ["anguloArco", "Arco: meio-ângulo (graus)", 10, 90, 5],
   ["preparoArco", "Arco: aviso (s)", 0.2, 1.5, 0.05], ["ativoArco", "Arco: tempo ativo (s)", 0.02, 0.6, 0.01],
   ["recupArco", "Arco: recuperação (s)", 0, 2, 0.05],
-  ["raioVarredura", "Varredura: raio (m)", 1, 6, 0.1], ["preparoVarredura", "Varredura: aviso (s)", 0.2, 1.5, 0.05],
+  ["raioVarredura", "Varredura: alcance da lâmina (m)", 1, 6, 0.1], ["anguloVarredura", "Varredura: meio-arco da lâmina (graus)", 30, 180, 5], ["larguraLamina", "Varredura: largura da lâmina (m)", 0.2, 2, 0.1], ["preparoVarredura", "Varredura: aviso (s)", 0.2, 1.5, 0.05],
   ["rasteiroAtivo", "Varredura: tempo ativo (s)", 0.05, 1, 0.01], ["recupVarredura", "Varredura: recuperação (s)", 0, 2, 0.05],
   ["recupPunida", "Varredura pulada: recuperação punida (s)", 0, 3, 0.1],
+  ["#", "Ferreiro: salto"],
+  ["raioSalto", "Salto: raio da aterrissagem (m)", 1, 5, 0.1], ["preparoSalto", "Salto: aviso e tempo no ar (s)", 0.3, 1.5, 0.05],
+  ["ativoSalto", "Salto: tempo ativo (s)", 0.02, 0.6, 0.01], ["recupSalto", "Salto: recuperação (s)", 0, 2, 0.05],
+  ["alcanceSalto", "Salto: usa a partir de (m)", 3, 12, 0.5], ["minSalto", "Salto: não usa mais perto que (m)", 1, 8, 0.5],
+  ["#", "Ferreiro: sprint e ritmo quebrado"],
+  ["velSprint", "Sprint antes do combo: velocidade (m/s)", 5, 16, 0.5], ["sprintMax", "Sprint: duração máxima (s)", 0.1, 1.5, 0.05],
+  ["sprintAlcance", "Sprint: começa a partir de (m além do alcance)", 0, 8, 0.5],
+  ["rajadaMin", "Rajada: mínimo de golpes", 1, 6, 1], ["rajadaMax", "Rajada: máximo de golpes", 1, 8, 1],
+  ["fatorRajada", "Rajada: recuperação multiplicada por", 0.1, 1, 0.05],
+  ["janelaKitar", "Janela para kitar depois da rajada (s)", 0, 5, 0.1], ["velJanela", "Janela: velocidade do chefe (fração)", 0.1, 1, 0.05],
   ["#", "Ferreiro: combo Martelo e Foice"],
   ["avisoCombo", "Combo: aviso do golpe 1 (s)", 0.5, 2.5, 0.05],
   ["intervaloCombo", "Combo: intervalo até o golpe 2 (s)", 0.1, 1.5, 0.05],
