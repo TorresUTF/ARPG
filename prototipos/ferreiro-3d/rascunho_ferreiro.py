@@ -57,37 +57,46 @@ class Forma:
     """Acumula blocos e cilindros numa malha só, lembrando qual osso pesa cada vértice."""
     def __init__(self):
         self.bm = bmesh.new()
+        # A camada de pesos tem que existir antes dos vértices: criar depois invalida as referências.
+        self.dvert = self.bm.verts.layers.deform.verify()
         self.grupos = {}     # nome do osso -> lista de índices de vértices
 
     def _fim(self, osso, verts, faces, mat):
         for f in faces:
             f.material_index = mat
-        self.grupos.setdefault(osso, []).extend(v.index for v in verts)
+        self.grupos.setdefault(osso, []).extend(verts)   # guarda os vértices em si, não o índice
 
     def caixa(self, osso, centro, tam, mat=0, rot=(0, 0, 0)):
-        r = bmesh.ops.create_cube(self.bm, size=1.0)
-        verts = r["verts"]
+        antes = set(self.bm.verts)
+        bmesh.ops.create_cube(self.bm, size=1.0)
+        verts = [v for v in self.bm.verts if v not in antes]
         bmesh.ops.scale(self.bm, vec=Vector(tam), verts=verts)
         bmesh.ops.rotate(self.bm, verts=verts, cent=(0, 0, 0),
                          matrix=Euler([math.radians(a) for a in rot]).to_matrix())
         bmesh.ops.translate(self.bm, vec=Vector(centro), verts=verts)
-        self.bm.verts.index_update()
         faces = list({f for v in verts for f in v.link_faces})
         self._fim(osso, verts, faces, mat)
 
     def cilindro(self, osso, centro, raio, altura, mat=0, rot=(0, 0, 0), raio2=None):
-        r = bmesh.ops.create_cone(self.bm, cap_ends=True, segments=10,
-                                  radius1=raio, radius2=raio if raio2 is None else raio2,
-                                  depth=altura)
-        verts = r["verts"]
+        # create_cone devolve só parte dos vértices (os centros das tampas ficam de fora e
+        # esticavam as poses); por isso pegamos tudo que apareceu na malha.
+        antes = set(self.bm.verts)
+        bmesh.ops.create_cone(self.bm, cap_ends=True, segments=10,
+                              radius1=raio, radius2=raio if raio2 is None else raio2,
+                              depth=altura)
+        verts = [v for v in self.bm.verts if v not in antes]
         bmesh.ops.rotate(self.bm, verts=verts, cent=(0, 0, 0),
                          matrix=Euler([math.radians(a) for a in rot]).to_matrix())
         bmesh.ops.translate(self.bm, vec=Vector(centro), verts=verts)
-        self.bm.verts.index_update()
         faces = list({f for v in verts for f in v.link_faces})
         self._fim(osso, verts, faces, mat)
 
     def criar_objeto(self, nome, materiais):
+        # Peso 1.0 no osso, gravado direto nos vértices do bmesh (índices mudam quando a malha é
+        # criada; a referência ao vértice não).
+        for i, verts in enumerate(self.grupos.values()):
+            for v in verts:
+                v[self.dvert][i] = 1.0
         malha = bpy.data.meshes.new(nome)
         self.bm.to_mesh(malha)
         self.bm.free()
@@ -95,8 +104,8 @@ class Forma:
             malha.materials.append(m)
         obj = bpy.data.objects.new(nome, malha)
         bpy.context.scene.collection.objects.link(obj)
-        for osso, idx in self.grupos.items():
-            obj.vertex_groups.new(name=osso).add(idx, 1.0, 'REPLACE')
+        for osso in self.grupos:    # mesma ordem de antes: o índice do grupo é a posição
+            obj.vertex_groups.new(name=osso)
         return obj
 
 # ---------------------------------------------------------------- esqueleto
@@ -228,9 +237,11 @@ ACOES = {
     "pulo_inicio": [(1, G), (7, {**AGACHA, "braco_D": (25, 0, 10), "braco_E": (25, 0, -10)}),
                     (15, {"braco_D": (0, 0, 88), "braco_E": (0, 0, -88), "torso": (-5, 0, 0)})],
     "pulo_meio": [(1, {"braco_D": (0, 0, 88), "braco_E": (0, 0, -88), "torso": (-5, 0, 0)}),
-                  (4, {**AGACHA, "coxa_D": (-65, 0, 0), "coxa_E": (-65, 0, 0), "torso": (30, 0, 0),
+                  (4, {**AGACHA, "coxa_D": (-80, 0, 0), "coxa_E": (-80, 0, 0),
+                       "canela_D": (125, 0, 0), "canela_E": (125, 0, 0), "torso": (35, 0, 0),
                        "braco_D": (-20, 0, 40), "braco_E": (-20, 0, -40)})],
-    "pulo_fim": [(1, {**AGACHA, "coxa_D": (-65, 0, 0), "coxa_E": (-65, 0, 0), "torso": (30, 0, 0),
+    "pulo_fim": [(1, {**AGACHA, "coxa_D": (-80, 0, 0), "coxa_E": (-80, 0, 0),
+                       "canela_D": (125, 0, 0), "canela_E": (125, 0, 0), "torso": (35, 0, 0),
                       "braco_D": (-20, 0, 40), "braco_E": (-20, 0, -40)}),
                  (14, G)],
     "foice_alta_inicio": [(1, G), (10, {"braco_D": (80, 0, 0), "braco_E": (-60, 0, -8),
@@ -271,8 +282,66 @@ NOMES_ACOES = ["varredura_inicio", "varredura_meio", "varredura_fim",
                "foice_alta_inicio", "foice_alta_meio", "foice_alta_fim",
                "andar", "sprint", "cansado"]
 
+# Pé = bloco de cada canela (centro, tamanho iguais aos de montar_corpo).
+def _cantos_do_pe(sx):
+    cantos = []
+    for dx in (-0.11, 0.11):
+        for dy in (-0.20, 0.20):
+            for dz in (-0.05, 0.05):
+                cantos.append(Vector((0.2 * sx + dx, -0.08 + dy, 0.05 + dz)))
+    return cantos
+
+def _ponto_mais_baixo_dos_pes(esq):
+    """Altura (z do mundo) do ponto mais baixo dos dois pés na pose atual (cinemática direta)."""
+    menor = 1e9
+    for suf, sx in (("D", -1), ("E", 1)):
+        pb = esq.pose.bones["canela_" + suf]
+        m = pb.matrix @ pb.bone.matrix_local.inverted()
+        for c in _cantos_do_pe(sx):
+            menor = min(menor, (m @ c).z)
+    return menor
+
+def _descida_local(pb, d):
+    """Vetor de `location` do osso que move o osso d metros para baixo no mundo (-Z)."""
+    return pb.bone.matrix_local.to_3x3().inverted() @ Vector((0, 0, -d))
+
+PASSO = 2   # chaves por quadro (2 = a cada meio quadro): menos erro de interpolação entre elas
+
+def _baixar_quadril(esq, acao, ini, fim):
+    """Uma chave de `location` do quadril por quadro: desce na vertical o quanto as pernas dobradas
+    pedem para o ponto mais baixo dos pés ficar em z = 0. Nunca sobe (descida >= 0)."""
+    quad = esq.pose.bones["quadril"]
+    cena = bpy.context.scene
+    descidas = []
+    rotacoes = []
+    for k in range((fim - ini) * PASSO + 1):
+        f = ini + k / PASSO
+        cena.frame_set(int(f), subframe=f - int(f))
+        rotacoes.append((f, {o: esq.pose.bones[o].rotation_euler.copy() for o in GUARDA}))
+        quad.location = (0, 0, 0)          # mede com o quadril na altura de repouso
+        bpy.context.view_layer.update()
+        descidas.append((f, max(0.0, _ponto_mais_baixo_dos_pes(esq))))
+    # Chaves de rotação densas também: com só 3 chaves o exportador escreve quaternions com
+    # sinais opostos e a interpolação do glb faz as pernas passarem "por cima" (180 graus) entre elas.
+    for f, rots in rotacoes:
+        for o, eul in rots.items():
+            esq.pose.bones[o].rotation_euler = eul
+            esq.pose.bones[o].keyframe_insert("rotation_euler", frame=f)
+    for f, d in descidas:
+        quad.location = _descida_local(quad, d)
+        quad.keyframe_insert("location", frame=f)
+    for fc in acao.fcurves if hasattr(acao, "fcurves") else _fcurves(acao):
+        if fc.data_path.endswith('location'):
+            for kp in fc.keyframe_points:
+                kp.interpolation = 'LINEAR'
+
+def _fcurves(acao):
+    """fcurves da Action (Blender 5 guarda em camadas/faixas/canais)."""
+    return [fc for camada in acao.layers for faixa in camada.strips for cb in faixa.channelbags for fc in cb.fcurves]
+
 def criar_acoes(esq):
-    """Uma Action por entrada de ACOES; só rotações de ossos (nada de translação)."""
+    """Uma Action por entrada de ACOES: rotações de ossos e, só no `quadril`, uma descida vertical
+    (nunca sobe) que mantém os pés no chão quando os joelhos dobram."""
     esq.animation_data_create()
     for pb in esq.pose.bones:
         pb.rotation_mode = 'XZY'
@@ -286,6 +355,7 @@ def criar_acoes(esq):
                 pb = esq.pose.bones[osso]
                 pb.rotation_euler = Euler((math.radians(rx), math.radians(ry), math.radians(rz)), 'XZY')
                 pb.keyframe_insert("rotation_euler", frame=frame)
+        _baixar_quadril(esq, acao, ACOES[nome][0][0], ACOES[nome][-1][0])
         # pernas do "pulo" etc. saem de GUARDA; ossos de arma e raiz ficam sem chave
     esq.animation_data.action = None
 
