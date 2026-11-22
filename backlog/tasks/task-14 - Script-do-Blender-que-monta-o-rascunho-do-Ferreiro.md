@@ -1,9 +1,10 @@
 ---
 id: TASK-14
 title: Script do Blender que monta o rascunho do Ferreiro
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-11-22T20:02:00Z'
+updated_date: '2026-11-22T20:13:00Z'
 labels: []
 milestone: m-3
 dependencies:
