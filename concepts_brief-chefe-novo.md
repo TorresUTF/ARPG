@@ -142,12 +142,29 @@ A etapa é única, então o protótipo precisa de chaves para descobrir qual pe�
   3. Tudo ligado. Responde (e), (f) e (g).
 * **Perguntas para responder depois de jogar:**
   * (a) Dá para reconhecer o golpe rasteiro na primeira vez?
+	Não. O que pode melhorar é fazer com que o golpe da foice tenha uma hit box em vez da área de acerto. Explico: em vez da foice ser apenas a área em vermelho, ser uma linha que vem varrendo de um lado para o outro e o personagem 	toma dano quando ela passa por ele. O amarelo ficou ok, a área do ataque tem que aumentar e em vez de ter um anel que vai até a borda do ataque o chefe pode pular e o dano vem quando ele cai no chão, e nesse caso o dano continua 	em área (a questão é que o anel passa a impressão que a foice deveria passar). [interação: 1]
+	Sim. [interação: 2]
   * (b) O rolamento e a energia criam decisões sem deixar o R e o E inúteis?
+	Tem que testar mais, eu foquei bastante em testar o F e o D e em tentar ler os golpes do chefe [interação: 1]
+	Sim. [interação: 2]
   * (c) O combo é vencido na 2ª ou 3ª tentativa, e você entende por que morreu?
+	O tempo de recuperação do chefe precisa diminuir, o chefe precisa ser mais agressivo. Acho que o chefe podar dar um sprint para chegar perto antes de dar o combo. [interação: 1]
+	Sim. [interação: 2]
   * (d) O chefe parece agressivo e mesmo assim dá para kitar?
+	Agressivo de menos, ele tem que ter um ritmo quebrado, quando ele está agressivo tem que desviar depois abre uma janela para kitar.[interação: 1]
+	Sim. [interação: 2]
   * (e) O E ainda tem motivo para existir ao lado do D?
+	Não tive esse sentimento, acho que diminuir um pouco a energia e o ritmo quebrado podem ajudar com isso. Diminuir a distância que o D rola relativo ao E é uma ideia também. [interação: 1]
+	Sim. [interação: 2]
   * (f) A mana te impediu de usar habilidades? A luta virou só ataque básico?
+	Acho que o chefe precisa de mais vida, não usei muitas habilidades. [interação: 1]
+  * (f1) A mana te impediu de usar habilidades?
+	Sim, quando fui displicente. [interação: 2]
+  * (f2) A mana restringiu o uso de habilidades de forma a criar tomadas de decisões?
+	Sim, precisei alterar a forma que estava jogando para usar de forma mais inteligente o meu E e R, e dando ataques básicos junto de habilidades para gerenciar a minha mana. [interação: 2]
   * (g) Você reconheceu o som de "não pode" sem olhar a barra?
+	Sim, isso ficou muito bom! [interação: 1]
+	Sim. [interação: 2]
 * **Critério de sucesso:** o autor responde "sim" para (a), (b), (c), (d) e (g), e "não" para (f). Se a mana não fizer nada (zero recusas) ou pesar demais, ela é revista antes de ir para `src/`.
 
 ## Objetivos e fora do escopo

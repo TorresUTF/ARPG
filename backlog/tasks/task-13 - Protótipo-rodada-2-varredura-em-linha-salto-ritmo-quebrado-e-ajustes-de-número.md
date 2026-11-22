@@ -6,7 +6,7 @@ title: >-
 status: Done
 assignee: []
 created_date: '2026-11-20T12:29:00Z'
-updated_date: '2026-11-20T12:36:00Z'
+updated_date: '2026-11-22T02:55:00Z'
 labels:
   - substitui-task-11
 milestone: m-3
@@ -31,5 +31,5 @@ Segunda rodada do protótipo de prototipos/esquiva-pulo/, a partir do feedback d
 - [x] #2 Salto: o chefe pula e causa dano em área ao aterrissar, sem anel de aviso; o aviso mostra onde ele vai cair
 - [x] #3 Ritmo: o chefe dá um sprint antes do combo e alterna rajada agressiva com janela para kitar; recuperações menores
 - [x] #4 Números: vida do chefe maior, D mais curto em relação ao E e energia ajustada, todos ainda controles no painel
-- [ ] #5 As respostas (a) a (g) do brief, na interação 2, estão todas marcadas como sim (em (f), sim significa que a mana não impediu o uso das habilidades)
+- [x] #5 As respostas (a) a (g) do brief, na interação 2, estão todas marcadas como sim (em (f), sim significa que a mana não impediu o uso das habilidades)
 <!-- AC:END -->
