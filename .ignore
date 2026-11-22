@@ -3,3 +3,94 @@
 !graft/
 graft/.cache/
 graft/.graph/
+
+# === Builds, Binários e Caches de Engine ===
+# Unity
+Library/
+Temp/
+Obj/
+Build/
+Builds/
+Logs/
+MemoryCaptures/
+UserSettings/
+
+# Unreal
+Binaries/
+Intermediate/
+Saved/
+DerivedDataCache/
+
+# Godot / Web / C++ / C#
+.godot/
+.import/
+node_modules/
+dist/
+build/
+target/
+bin/
+obj/
+.cache/
+coverage/
+
+# Executáveis e bibliotecas compiladas (Windows)
+*.exe
+*.dll
+*.pdb
+*.lib
+*.exp
+*.so
+*.dylib
+
+# === Metadados e Lockfiles (alto ruído em buscas) ===
+*.meta
+*.uid
+*.import
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+Cargo.lock
+
+# === Assets Pesados (Imagem, 3D, Áudio, Vídeo, Fontes) ===
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.tga
+*.psd
+*.exr
+*.hdr
+*.fbx
+*.obj
+*.blend
+*.glb
+*.gltf
+*.dae
+*.wav
+*.mp3
+*.ogg
+*.flac
+*.bank
+*.mp4
+*.mov
+*.avi
+*.webm
+*.ttf
+*.otf
+*.woff
+*.woff2
+
+# === Binários de Engine, Saves e Logs ===
+*.uasset
+*.umap
+*.pak
+*.sav
+*.log
+*.dmp
+*.sqlite
+*.db
+
+# Opcional: descomente se arquivos de cena/prefab estiverem gigantes nas buscas
+# *.unity
+# *.prefab
+# *.tscn

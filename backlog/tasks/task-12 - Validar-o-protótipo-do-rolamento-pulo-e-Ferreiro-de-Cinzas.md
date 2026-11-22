@@ -5,11 +5,13 @@ status: To Do
 assignee:
   - Gabriel
 created_date: '2026-11-20T02:21:00Z'
+updated_date: '2026-11-20T12:29:00Z'
 labels:
   - validacao
 milestone: m-3
 dependencies:
   - TASK-11
+  - TASK-13
 type: task
 ordinal: 11000
 ---
