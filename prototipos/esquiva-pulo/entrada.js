@@ -22,7 +22,22 @@ tela.addEventListener("mousedown", e => {
   if (e.button === 2) { direito = true; comandoMover(mouse.x, mouse.y); } else if (e.button === 0) comandoAtacar();
 });
 window.addEventListener("mouseup", e => { if (e.button === 2) direito = false; });
-function alternarCheia() { if (document.fullscreenElement) document.exitFullscreen(); else document.getElementById("palco").requestFullscreen(); }
+// Tenta a tela cheia do navegador; se ele recusar (por exemplo, a página aberta dentro de outra), a arena ocupa a janela inteira.
+const palco = document.getElementById("palco"), botaoSair = document.getElementById("sair-cheia");
+const emTelaCheia = () => !!document.fullscreenElement || palco.classList.contains("cheia");
+const mostrarSair = () => { botaoSair.hidden = !emTelaCheia(); };
+async function alternarCheia() {
+  if (emTelaCheia()) {
+    palco.classList.remove("cheia");
+    if (document.fullscreenElement) { try { await document.exitFullscreen(); } catch (_) {} }
+  } else {
+    try { if (!palco.requestFullscreen) throw 0; await palco.requestFullscreen(); } catch (_) { palco.classList.add("cheia"); }
+  }
+  mostrarSair(); tela.focus({ preventScroll: true });
+}
+botaoSair.onclick = alternarCheia;
+document.addEventListener("fullscreenchange", () => { mostrarSair(); tela.focus({ preventScroll: true }); });
+window.addEventListener("keydown", e => { if (e.key === "Escape" && palco.classList.contains("cheia")) { palco.classList.remove("cheia"); mostrarSair(); } });
 tela.addEventListener("keydown", e => {
   ligarAudio();
   const k = e.key.toLowerCase();
@@ -50,7 +65,7 @@ function chave(rotulo, tipo, opcoes, get, set) {
   el.addEventListener("change", () => tela.focus()); l.append(el); document.getElementById("chaves").append(l);
 }
 chave("Chefe:", "sel", [["ferreiro", "Ferreiro de Cinzas"], ["golem", "Golem"]], () => SW.chefe, v => { SW.chefe = v; s.b.proximo = null; });
-chave("Travar golpe:", "sel", [["auto", "Automático"], ["arco", "Só arco"], ["varredura", "Só varredura"], ["combo", "Só combo"]], () => SW.travar, v => { SW.travar = v; s.b.proximo = null; });
+chave("Travar golpe:", "sel", [["auto", "Automático (foice, salto e martelada)"], ["varredura", "Só foice (varredura)"], ["salto", "Só salto"], ["martelada", "Só martelada"], ["arco", "Só arco (antigo)"], ["combo", "Só combo (antigo)"]], () => SW.travar, v => { SW.travar = v; s.b.proximo = null; });
 chave("Energia infinita", "check", 0, () => SW.energiaInf, v => SW.energiaInf = v);
 chave("Mana:", "sel", [["normal", "Normal"], ["infinita", "Infinita"], ["desligada", "Desligada (sem custo e sem barra)"]], () => SW.mana, v => SW.mana = v);
 chave("Todos os golpes inteiros", "check", 0, () => SW.tudoInteiro, v => SW.tudoInteiro = v);
@@ -63,6 +78,11 @@ chave("Som da recarga", "check", 0, () => somRecarga, v => somRecarga = v);
 chave("Direção do D:", "sel", [["mouse", "Mouse"], ["movimento", "Movimento"]], () => SW.dirD, v => SW.dirD = v);
 
 // ===== Painel de números =====
+// Os números mudados ficam guardados neste navegador (se ele deixar) e voltam ao recarregar a página.
+const GUARDA = "esquiva-pulo:numeros";
+const alterados = () => Object.fromEntries(Object.keys(PADRAO).filter(k => C[k] !== PADRAO[k]).map(k => [k, C[k]]));
+function guardar() { try { localStorage.setItem(GUARDA, JSON.stringify(alterados())); } catch (_) {} }
+try { const g = JSON.parse(localStorage.getItem(GUARDA) || "{}"); for (const k in g) if (k in PADRAO && typeof g[k] === "number") C[k] = g[k]; } catch (_) {}
 const caixa = document.getElementById("ajustes");
 const campos = {};
 for (const a of AJUSTES) {
@@ -72,14 +92,21 @@ for (const a of AJUSTES) {
   d.innerHTML = `<label><span>${nome}</span><span></span></label><input type="range" min="${min}" max="${max}" step="${passoV}">`;
   const inp = d.querySelector("input"), val = d.querySelectorAll("span")[1];
   inp.value = C[id]; val.textContent = C[id];
-  inp.oninput = () => { C[id] = +inp.value; val.textContent = inp.value; verificarPiso(); };
+  inp.oninput = () => { C[id] = +inp.value; val.textContent = inp.value; verificarPiso(); guardar(); };
   campos[id] = { inp, val }; caixa.append(d);
 }
-document.getElementById("padrao").onclick = () => { Object.assign(C, PADRAO); for (const id in campos) { campos[id].inp.value = C[id]; campos[id].val.textContent = C[id]; } verificarPiso(); };
+document.getElementById("padrao").onclick = () => { Object.assign(C, PADRAO); for (const id in campos) { campos[id].inp.value = C[id]; campos[id].val.textContent = C[id]; } verificarPiso(); guardar(); };
+document.getElementById("copiar").onclick = async () => {
+  const texto = JSON.stringify(alterados(), null, 1), aviso = document.getElementById("copiado");
+  try { await navigator.clipboard.writeText(texto); aviso.textContent = "Copiado. Cole na conversa."; }
+  catch (_) { aviso.textContent = texto; }
+};
 function verificarPiso() {
   const el = document.getElementById("alerta"), r = [];
   if (C.preparoArco < C.pisoAviso) r.push("arco");
   if (C.preparoVarredura < C.pisoAviso) r.push("varredura");
+  if (C.preparoSalto < C.pisoAviso) r.push("salto");
+  if (C.preparoMartelada < C.pisoAviso) r.push("martelada");
   if (C.avisoCombo < C.pisoAviso) r.push("martelo");
   if (C.intervaloCombo < C.pisoAviso) r.push("foice (intervalo do combo)");
   if (C.protegeF - C.rasteiroAtivo < 0.2) r.push("margem do pulo abaixo de 0,20 s");
