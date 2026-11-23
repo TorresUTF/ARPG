@@ -177,6 +177,58 @@ describe("task-14 rascunho do Ferreiro", () => {
     }
   });
 
+  it("task-14 AC1: nenhum vértice das malhas fica sem osso (nada estica nas poses)", () => {
+    let malhas = 0;
+    raiz.traverse((m) => {
+      if (!(m instanceof SkinnedMesh)) return;
+      malhas++;
+      const w = m.geometry.getAttribute("skinWeight");
+      const j = m.geometry.getAttribute("skinIndex");
+      const n = w.count;
+      for (let i = 0; i < n; i++) {
+        // Vértice sem grupo no Blender vira "neutral_bone" no glb e fica parado no ar enquanto o corpo se mexe.
+        for (let k = 0; k < 4; k++) {
+          if (w.getComponent(i, k) > 0) {
+            const nome = m.skeleton.bones[j.getComponent(i, k)].name;
+            expect(["raiz", "neutral_bone"], `${m.name} vértice ${i} preso a ${nome}`).not.toContain(nome);
+          }
+        }
+        const soma = w.getX(i) + w.getY(i) + w.getZ(i) + w.getW(i);
+        expect(soma, `${m.name} vértice ${i}`).toBeGreaterThan(0.99);
+        expect(soma, `${m.name} vértice ${i}`).toBeLessThan(1.01);
+      }
+    });
+    expect(malhas).toBeGreaterThanOrEqual(3); // corpo, foice e martelo
+  });
+
+  it("task-14 AC3: nas animações os pés ficam no chão (o ponto mais baixo do corpo fica entre -0,07 e 0,12 m)", () => {
+    const corpo = osso("corpo");
+    const v = new Vector3();
+    for (const c of clipes) {
+      const mixer = new AnimationMixer(raiz);
+      mixer.clipAction(c).play();
+      const passos = 12;
+      for (let i = 0; i <= passos; i++) {
+        mixer.setTime((c.duration * i) / passos);
+        raiz.updateMatrixWorld(true);
+        let minY = Infinity;
+        corpo.traverse((m) => {
+          if (!(m instanceof SkinnedMesh)) return;
+          const n = m.geometry.getAttribute("position").count;
+          for (let k = 0; k < n; k++) {
+            m.getVertexPosition(k, v);
+            v.applyMatrix4(m.matrixWorld);
+            minY = Math.min(minY, v.y);
+          }
+        });
+        expect(minY, `${c.name} em ${i}/${passos}`).toBeGreaterThanOrEqual(-0.07); // na passada a ponta do pé do bloco cava até ~6 cm (sem tornozelo)
+        expect(minY, `${c.name} em ${i}/${passos}`).toBeLessThanOrEqual(0.12);
+      }
+      mixer.stopAllAction();
+      mixer.uncacheClip(c);
+    }
+  });
+
   it("task-14 AC4: ferreiro.glb é um GLB válido (glTF, versão 2, tamanho certo) e carrega as 15 animações", () => {
     const vista = new DataView(buffer);
     expect(new TextDecoder().decode(new Uint8Array(buffer, 0, 4))).toBe("glTF");
