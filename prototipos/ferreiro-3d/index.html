@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ferreiro em 3D: aviso pela postura</title>
+<style>
+:root { --fundo:#11141b; --arena:#171b24; --grade:#222838; --texto:#dfe4ee; --fraco:#8a93a6; --jogador:#4da3ff; --borda:#2c3344; --fonte:"Segoe UI",system-ui,sans-serif; color-scheme:dark; }
+html, body { background:var(--fundo); color:var(--texto); font-family:var(--fonte); }
+body { padding:16px; }
+main { max-width:980px; margin:0 auto; display:grid; gap:14px; }
+h1 { font-size:18px; margin:0; font-weight:600; }
+h2 { font-size:13px; margin:6px 0 0; grid-column:1/-1; text-transform:uppercase; letter-spacing:.04em; }
+.ajuda { color:var(--fraco); margin:0; line-height:1.5; }
+.ajuda b { color:var(--texto); }
+#palco { display:grid; position:relative; }
+#palco canvas { grid-area:1/1; }
+#palco.cheia, #palco:fullscreen { position:fixed; inset:0; z-index:50; background:#000; place-items:center; }
+canvas { width:100%; max-width:100%; height:auto; display:block; border:1px solid var(--borda); border-radius:6px; outline:none; }
+#tela3d { background:var(--arena); }
+#tela { background:transparent; cursor:crosshair; position:relative; }
+#palco.cheia canvas, #palco:fullscreen canvas { width:min(100vw,150vh); max-width:none; border:0; border-radius:0; }
+#sair-cheia { position:absolute; top:12px; right:12px; z-index:1; }
+.barra { display:flex; flex-wrap:wrap; gap:8px 18px; align-items:center; color:var(--fraco); }
+button, select { font:inherit; background:var(--grade); color:var(--texto); border:1px solid var(--borda); border-radius:5px; padding:6px 12px; cursor:pointer; }
+button:hover { border-color:var(--jogador); }
+details { border:1px solid var(--borda); border-radius:6px; padding:10px 14px; }
+summary { cursor:pointer; font-weight:600; }
+.ajustes { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:10px 24px; margin-top:12px; }
+.ajuste label { display:flex; justify-content:space-between; font-size:13px; color:var(--fraco); }
+.ajuste label span:last-child { color:var(--texto); }
+.ajuste input[type=range] { width:100%; accent-color:var(--jogador); }
+.marcar { display:flex; gap:8px; align-items:center; font-size:13px; color:var(--fraco); }
+#registro { background:var(--arena); border:1px solid var(--borda); border-radius:6px; padding:8px 12px; font:12px/1.5 Consolas,monospace; max-height:160px; overflow:auto; white-space:pre; margin:0; }
+#alerta { color:#ffb86b; margin:0; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Protótipo rodada 3: Ferreiro em 3D, aviso só pela postura</h1>
+  <p class="ajuda">Mesma luta da rodada 2. <b>Botão direito</b>: mover. <b>Botão esquerdo</b> ou <b>A</b>: ataque básico. <b>Q W E R</b>: habilidades no mouse (custam mana). <b>D</b>: rolamento na direção do mouse (invencível, custa energia). <b>F</b>: pulo parado (protege só de golpe <b>rasteiro</b>, custa energia). <b>S</b>: parar. <b>Enter</b>: recomeçar. <b>L</b>: tela cheia.</p>
+  <p class="ajuda">O Ferreiro <b>não muda de cor e não marca o chão</b>: o aviso é só o corpo dele.
+  <b>Foice baixa, puxada para um lado</b> = varredura rente ao chão (pule com F).
+  <b>Martelo erguido acima da cabeça</b> = martelada onde você está (role com D na hora).
+  <b>Agacha e salta</b> = salto até onde você estava (a onda do pouso é rasteira: F).
+  <b>Foice alta, na altura do peito</b> = corte alto (role com D; só aparece travando "arco" ou "combo").</p>
+  <p class="ajuda" id="foco"><b>Clique na arena</b> antes de usar o teclado.</p>
+  <div id="palco">
+    <canvas id="tela3d" width="960" height="640" aria-hidden="true"></canvas>
+    <canvas id="tela" width="960" height="640" tabindex="0"></canvas>
+    <button id="sair-cheia" type="button" hidden>Sair da tela cheia (L)</button>
+  </div>
+  <div class="barra">
+    <button id="recomecar" type="button">Recomeçar (Enter)</button>
+    <button id="tela-cheia" type="button">Tela cheia (L)</button>
+    <span id="estado"></span>
+  </div>
+  <p id="alerta" hidden></p>
+  <details open>
+    <summary>Chaves de diagnóstico (valem na hora)</summary>
+    <div class="barra" style="margin-top:12px" id="chaves"></div>
+  </details>
+  <details>
+    <summary>Registro de golpes recebidos</summary>
+    <pre id="registro">(nenhum golpe ainda)</pre>
+  </details>
+  <details>
+    <summary>Painel de ajuste de números (vale na hora, sem recomeçar)</summary>
+    <div class="ajustes" id="ajustes"></div>
+    <div class="barra" style="margin-top:12px"><button id="padrao" type="button">Voltar aos valores iniciais</button><button id="copiar" type="button">Copiar números alterados</button><span id="copiado"></span></div>
+    <p class="ajuda" style="margin-top:8px">Os números ficam guardados neste navegador e voltam ao recarregar. Para levá-los ao jogo, use "Copiar números alterados" e cole na conversa.</p>
+  </details>
+</main>
+<!-- Regras e números: os MESMOS arquivos da rodada 2, sem cópia. -->
+<script src="../esquiva-pulo/config.js"></script>
+<script src="../esquiva-pulo/sim.js"></script>
+<script src="../esquiva-pulo/boss.js"></script>
+<script src="../esquiva-pulo/passo.js"></script>
+<!-- Rodada 3: postura do chefe, desenho 3D (three.js do npm, servido pelo Vite) e entrada. -->
+<script src="postura.js"></script>
+<script type="module" src="entrada.js"></script>
+</body>
+</html>
