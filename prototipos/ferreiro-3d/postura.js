@@ -49,25 +49,3 @@ function direcaoDoChefe(b, j) {
   }
   return Math.atan2(j.y - b.y, j.x - b.x);
 }
-
-// Cores só do golem de comparação (o modo "Chefe: Golem"), iguais às da rodada 2.
-const COR_GOLEM = { parado: "#8a8f9c", atordoado: "#888888", rasteiro: "#ff9f43", inteiro: "#ff4d4d" };
-
-/** Cor do corpo do chefe. O Ferreiro não tem: ele usa sempre as cores do próprio modelo (o aviso é só a postura). */
-function corDoCorpo(b) {
-  if (SW.chefe !== "golem") return null;
-  if (b.estado === "atordoado") return COR_GOLEM.atordoado;
-  if (b.g) return b.g.altura === "rasteiro" ? COR_GOLEM.rasteiro : COR_GOLEM.inteiro;
-  return COR_GOLEM.parado;
-}
-
-/** Área do golpe desenhada no chão. O Ferreiro não desenha nenhuma; só o golem de comparação mostra o círculo. */
-function areaNoChao(b) {
-  if (SW.chefe !== "golem" || !b.g || b.g.forma !== "circulo") return null;
-  const g = b.g, prog = g.fase === "preparo" ? g.t / Math.max(1, g.prep) : 1;
-  return {
-    x: g.cx !== undefined ? g.cx : b.x, y: g.cy !== undefined ? g.cy : b.y, raio: g.raio,
-    cor: g.altura === "rasteiro" ? COR_GOLEM.rasteiro : COR_GOLEM.inteiro,
-    opacidade: g.fase === "ativo" ? 0.7 : 0.12 + 0.2 * prog,
-  };
-}

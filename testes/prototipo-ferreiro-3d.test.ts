@@ -8,6 +8,7 @@ import passoJs from "../prototipos/esquiva-pulo/passo.js?raw";
 import posturaJs from "../prototipos/ferreiro-3d/postura.js?raw";
 import indexHtml from "../prototipos/ferreiro-3d/index.html?raw";
 import cenaJs from "../prototipos/ferreiro-3d/cena.js?raw";
+import entradaJs from "../prototipos/ferreiro-3d/entrada.js?raw";
 import { beforeAll, describe, expect, it } from "vitest";
 import { AnimationMixer, Group, Vector3, type AnimationClip, type Object3D } from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
@@ -21,7 +22,7 @@ const fs = (await import(/* @vite-ignore */ "node:" + "fs")) as ModuloFs;
 /* eslint-disable @typescript-eslint/no-explicit-any */
 function carregar(): any {
   const codigo = [configJs, simJs, bossJs, passoJs, posturaJs].join("\n");
-  return new Function(codigo + "\nreturn { C, SW, DT, novoJogo, passo, passos, criarGolpe, getS: () => s, posturaDoChefe, direcaoDoChefe, corDoCorpo, areaNoChao };")();
+  return new Function(codigo + "\nreturn { C, SW, DT, novoJogo, passo, passos, criarGolpe, getS: () => s, posturaDoChefe, direcaoDoChefe };")();
 }
 function novo(travar: string): any {
   const m = carregar();
@@ -159,26 +160,17 @@ describe("task-15 rodada 3: Ferreiro em 3D", () => {
     b.g = m.criarGolpe("arco"); b.g.fase = "ativo"; expect(m.posturaDoChefe(b, 0).espelhar).toBe(false);
   });
 
-  it("task-15 AC4: o Ferreiro não troca a cor do corpo nem desenha área no chão em nenhum golpe ou fase", () => {
-    for (const travar of ["auto", "varredura", "salto", "martelada", "arco", "combo"]) {
-      const m = novo(travar);
-      for (let i = 0; i < 60 * 15; i++) {
-        m.passo();
-        const b = m.getS().b;
-        expect(m.corDoCorpo(b)).toBeNull();
-        expect(m.areaNoChao(b)).toBeNull();
-      }
-    }
-    // o desenho 3D não mexe nas cores do modelo: só o jogador, o golem de comparação e a área do golem mudam de cor
+  it("task-15 AC4: o Ferreiro não troca a cor do corpo nem desenha área no chão, e não existe golem na rodada 3", () => {
+    // o desenho 3D não mexe nas cores do modelo: só a cor do jogador muda
     expect(cenaJs).not.toMatch(/emissive/);
     const trocas = [...cenaJs.matchAll(/(\w+(?:\.\w+)*)\.color\.set\(/g)].map(x => x[1]);
-    expect(new Set(trocas)).toEqual(new Set(["matJog", "matGolem", "area.material"]));
-    expect(cenaJs).toMatch(/matGolem\.color\.set\(corDoCorpo\(b\)/);
-    expect(cenaJs).toMatch(/const ar = areaNoChao\(b\)/);
-    // o golem de comparação continua com a cor e o círculo da rodada 2
-    const m = novo("varredura"); m.SW.chefe = "golem";
-    const b = m.getS().b; b.estado = "golpe"; b.g = m.criarGolpe("golem");
-    expect(m.corDoCorpo(b)).toBe("#ff4d4d");
-    expect(m.areaNoChao(b)).not.toBeNull();
+    expect(new Set(trocas)).toEqual(new Set(["matJog"]));
+    // nada desenhado no chão além da grade (sem círculo, anel ou área de golpe)
+    expect(cenaJs).not.toMatch(/CircleGeometry|RingGeometry|areaNoChao|corDoCorpo/);
+    expect(posturaJs).not.toMatch(/areaNoChao|corDoCorpo/);
+    // sem golem: nem no desenho, nem como opção da página; a luta começa sempre com o Ferreiro
+    expect(cenaJs).not.toMatch(/golem/i);
+    expect(entradaJs).not.toMatch(/\["golem"/);
+    expect(entradaJs).toContain('SW.chefe = "ferreiro"');
   });
 });

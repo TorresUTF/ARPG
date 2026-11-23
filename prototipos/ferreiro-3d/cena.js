@@ -14,19 +14,22 @@ const cena = new THREE.Scene();
 cena.background = new THREE.Color("#11141b");
 const camera = new THREE.PerspectiveCamera(30, 960 / 640, 1, 300);
 
-// ===== Câmera alta, em perspectiva, parada mostrando a arena inteira (como a luta do jogo) =====
-const GRAU = Math.PI / 180;
-export function posicionarCamera(inclinacaoGraus) {
-  const incl = inclinacaoGraus * GRAU, foco = new THREE.Vector3(LARG / 2, 0, ALT / 2 + 0.7);
-  const cantos = [[0, 0, 0], [LARG, 0, 0], [0, 0, ALT], [LARG, 0, ALT], [0, 2.8, 0], [LARG, 2.8, 0]].map(p => new THREE.Vector3(...p));
-  let dist = 90;
-  for (let d = 15; d < 90; d += 0.25) {
-    camera.position.set(foco.x, Math.sin(incl) * d, foco.z + Math.cos(incl) * d);
-    camera.lookAt(foco); camera.updateMatrixWorld();
-    if (cantos.every(c => { const v = c.clone().project(camera); return Math.abs(v.x) <= 0.97 && Math.abs(v.y) <= 0.97; })) { dist = d; break; }
-  }
-  camera.position.set(foco.x, Math.sin(incl) * dist, foco.z + Math.cos(incl) * dist);
+// ===== Câmera perto, como a luta do jogo (src/apresentacao/camera3d.ts, modo "perto") =====
+// Segue o jogador a 27 m, inclinada 50°, puxada até 3,5 m na direção do chefe; desliza 0,08 por quadro.
+const CAMERA = { dist: 27, incl: 50 * Math.PI / 180, puxar: 0.4, maxPuxar: 3.5, suavidade: 0.08 };
+const foco = new THREE.Vector3(), focoAlvo = new THREE.Vector3();
+let focoIniciado = false;
+function seguirNaLuta() {
+  const j = s.j, b = s.b;
+  let dx = (b.x - j.x) * CAMERA.puxar, dy = (b.y - j.y) * CAMERA.puxar;
+  const d = Math.hypot(dx, dy);
+  if (d > CAMERA.maxPuxar) { dx *= CAMERA.maxPuxar / d; dy *= CAMERA.maxPuxar / d; }
+  focoAlvo.set(j.x + dx, 0, j.y + dy + 0.5);
+  foco.lerp(focoAlvo, focoIniciado ? CAMERA.suavidade : 1); focoIniciado = true;
+  camera.position.set(foco.x, Math.sin(CAMERA.incl) * CAMERA.dist, foco.z + Math.cos(CAMERA.incl) * CAMERA.dist);
   camera.lookAt(foco); camera.updateMatrixWorld();
+  // o sol acompanha o foco, para a sombra valer em qualquer canto da arena
+  sol.position.set(foco.x - 4, 20, foco.z - 6); sol.target.position.copy(foco);
 }
 
 // ===== Luz e chão =====
@@ -66,18 +69,11 @@ const tiros = [];
 
 // ===== O chefe =====
 // `chefe` anda e gira pela arena; `espelho` vira o modelo do avesso no eixo x quando o golpe vem do outro lado.
+// O chefe é só o ferreiro.glb: sem troca de cor e sem nada desenhado no chão.
 const chefe = new THREE.Group(), espelho = new THREE.Group();
 chefe.add(espelho); cena.add(chefe);
 let ferreiro = null, mixer = null, acoes = {}, acaoAtual = null, nomeAtual = "";
 let erroModelo = null;
-
-// golem de comparação: cilindro que troca de cor, com o círculo no chão (rodada 2)
-const matGolem = new THREE.MeshStandardMaterial({ color: "#8a8f9c" });
-const golem = new THREE.Mesh(new THREE.CylinderGeometry(RAIO_B, RAIO_B, 1.8, 24), matGolem);
-golem.position.y = 0.9; golem.castShadow = true;
-chefe.add(golem);
-const area = new THREE.Mesh(new THREE.CircleGeometry(1, 48), new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false }));
-area.rotation.x = -Math.PI / 2; area.position.y = 0.02; cena.add(area);
 
 export const carregado = new GLTFLoader().loadAsync(new URL("../../src/apresentacao/arte/ferreiro.glb", import.meta.url).href).then(gltf => {
   ferreiro = gltf.scene;
@@ -142,15 +138,9 @@ export function desenhar3d(fracao) {
     m.material = matTiro[t.tipo]; m.scale.setScalar(r); m.position.set(t.x, 1, t.y);
   });
   // chefe
-  const ehGolem = SW.chefe === "golem";
   chefe.position.set(b.x, b.voo * 2.2, b.y);
   chefe.rotation.y = rumo(direcaoDoChefe(b, j));
-  golem.visible = ehGolem || !ferreiro;
-  espelho.visible = !ehGolem && !!ferreiro;
-  matGolem.color.set(corDoCorpo(b) || "#a8573a");
-  if (!ehGolem) posar(fracao);
-  const ar = areaNoChao(b);
-  area.visible = !!ar;
-  if (ar) { area.position.set(ar.x, 0.02, ar.y); area.scale.setScalar(ar.raio); area.material.color.set(ar.cor); area.material.opacity = ar.opacidade; }
+  posar(fracao);
+  seguirNaLuta();
   renderizador.render(cena, camera);
 }

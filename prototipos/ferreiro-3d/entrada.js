@@ -1,11 +1,11 @@
 // Entrada (mouse e teclado), som, HUD, painel, chaves de diagnóstico e laço principal da rodada 3.
 // Cópia da entrada.js da rodada 2, com o mouse lendo o chão 3D e o HUD desenhado por cima da cena.
-import { desenhar3d, noChao, naTela, posicionarCamera, problemaDoModelo } from "./cena.js";
+import { desenhar3d, noChao, naTela, problemaDoModelo } from "./cena.js";
 
 const tela = document.getElementById("tela"), cv = tela.getContext("2d");
 let pausado = false, avancar = false, mouse = { x: 12, y: 8 }, direito = false, lento = false;
-let mudo = false, somRecarga = true, mostrarPensamento = false, inclinacao = 50;
-posicionarCamera(inclinacao);
+let mudo = false, somRecarga = true, mostrarPensamento = false;
+SW.chefe = "ferreiro"; // a rodada 3 é só o Ferreiro (sem o golem de comparação da rodada 2)
 
 // ===== Som: bipe de onda quadrada gerado por código, no máximo um a cada 150 ms =====
 let audio = null, ultimoBipe = -1;
@@ -69,9 +69,7 @@ function chave(rotulo, tipo, opcoes, get, set) {
   else { el = document.createElement("select"); for (const [v, t] of opcoes) el.add(new Option(t, v)); el.value = get(); el.onchange = () => set(el.value); }
   el.addEventListener("change", () => tela.focus()); l.append(el); document.getElementById("chaves").append(l);
 }
-chave("Chefe:", "sel", [["ferreiro", "Ferreiro de Cinzas (só postura)"], ["golem", "Golem (cor e círculo, para comparar)"]], () => SW.chefe, v => { SW.chefe = v; s.b.proximo = null; });
 chave("Travar golpe:", "sel", [["auto", "Automático (foice, salto e martelada)"], ["varredura", "Só foice (varredura)"], ["salto", "Só salto"], ["martelada", "Só martelada"], ["arco", "Só arco (antigo)"], ["combo", "Só combo (antigo)"]], () => SW.travar, v => { SW.travar = v; s.b.proximo = null; });
-chave("Câmera:", "sel", [["50", "Inclinação do jogo (50°)"], ["65", "Mais de cima (65°)"], ["80", "Quase reta de cima (80°)"]], () => String(inclinacao), v => { inclinacao = +v; posicionarCamera(inclinacao); });
 chave("Mostrar o que o chefe pensa (entrega o golpe)", "check", 0, () => mostrarPensamento, v => mostrarPensamento = v);
 chave("Energia infinita", "check", 0, () => SW.energiaInf, v => SW.energiaInf = v);
 chave("Mana:", "sel", [["normal", "Normal"], ["infinita", "Infinita"], ["desligada", "Desligada (sem custo e sem barra)"]], () => SW.mana, v => SW.mana = v);
@@ -192,7 +190,7 @@ function quadro(agora) {
     linhasMostradas = s.log.length;
     document.getElementById("registro").textContent = s.log.length ? s.log.slice(-40).join("\n") : "(nenhum golpe ainda)";
   }
-  document.getElementById("estado").textContent = "Chefe: " + SW.chefe + " | vida do chefe " + Math.max(0, Math.round(s.b.vida)) + "/" + C.vidaChefe;
+  document.getElementById("estado").textContent = "Ferreiro de Cinzas | vida do chefe " + Math.max(0, Math.round(s.b.vida)) + "/" + C.vidaChefe;
   requestAnimationFrame(quadro);
 }
 requestAnimationFrame(quadro);
