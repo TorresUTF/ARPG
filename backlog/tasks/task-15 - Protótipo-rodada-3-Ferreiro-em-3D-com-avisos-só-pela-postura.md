@@ -1,9 +1,10 @@
 ---
 id: TASK-15
 title: 'Protótipo rodada 3: Ferreiro em 3D com avisos só pela postura'
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-11-22T20:02:00Z'
+updated_date: '2026-11-23T19:57:00Z'
 labels: []
 milestone: m-3
 dependencies:
